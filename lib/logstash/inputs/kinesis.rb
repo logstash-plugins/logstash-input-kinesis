@@ -36,7 +36,10 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
 
   def run(output_queue)
     worker_factory = WorkerFactory.new(@codec, output_queue, method(:decorate))
-    @worker = KCL::Worker.new(worker_factory, @config)
+    @worker = KCL::Worker.new(
+      worker_factory,
+      @config,
+      com.amazonaws.services.kinesis.metrics.impl::NullMetricsFactory.new)
     @worker.run()
   end
 

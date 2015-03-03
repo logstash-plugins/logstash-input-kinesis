@@ -27,7 +27,7 @@ RSpec.describe "inputs/kinesis" do
   let(:codec) { LogStash::Codecs::JSON.new() }
 
   it "registers without error" do
-    input = LogStash::Plugin.lookup("input", "kinesis").new("kinesis_stream_name" => "specs")
+    input = LogStash::Plugin.lookup("input", "kinesis").new("kinesis_stream_name" => "specs", "codec" => codec)
     expect { input.register }.to_not raise_error
   end
 

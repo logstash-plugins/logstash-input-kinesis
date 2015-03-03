@@ -2,6 +2,8 @@
 
 This is a plugin for [Logstash](https://github.com/elasticsearch/logstash).
 
+[![Build Status](https://travis-ci.org/codekitchen/logstash-input-kinesis.svg)](https://travis-ci.org/codekitchen/logstash-input-kinesis)
+
 ## Installation
 
 This plugin requires Logstash 1.5, and can be installed by Logstash

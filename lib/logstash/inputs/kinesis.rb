@@ -4,14 +4,33 @@ require "logstash/errors"
 require "logstash/environment"
 require "logstash/namespace"
 
-require "logstash/inputs/kinesis/version"
 require 'logstash-input-kinesis_jars'
+require "logstash/inputs/kinesis/version"
 
+# Receive events through an AWS Kinesis stream.
+#
+# This input plugin uses the Java Kinesis Client Library underneath, so the
+# documentation at https://github.com/awslabs/amazon-kinesis-client will be
+# useful.
+#
+# AWS credentials can be specified either through environment variables, or an
+# IAM instance role. The library uses a DynamoDB table for worker coordination,
+# so you'll need to grant access to that as well as to the Kinesis stream. The
+# DynamoDB table has the same name as the `application_name` configuration
+# option, which defaults to "logstash".
+#
+# The library can optionally also send worker statistics to CloudWatch.
 class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   KCL = com.amazonaws.services.kinesis.clientlibrary.lib.worker
+  require "logstash/inputs/kinesis/worker"
 
   config_name 'kinesis'
   milestone 1
+
+  attr_reader(
+    :kcl_config,
+    :kcl_worker,
+  )
 
   # The application name used for the dynamodb coordination table. Must be
   # unique for this kinesis stream.
@@ -23,6 +42,15 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   # How many seconds between worker checkpoints to dynamodb.
   config :checkpoint_interval_seconds, :validate => :number, :default => 60
 
+  # Worker metric tracking. By default this is disabled, set it to "cloudwatch"
+  # to enable the cloudwatch integration in the Kinesis Client Library.
+  config :metrics, :validate => [nil, "cloudwatch"], :default => nil
+
+  def initialize(params = {}, kcl_class = KCL::Worker)
+    @kcl_class = kcl_class
+    super(params)
+  end
+
   def register
     # the INFO log level is extremely noisy in KCL
     org.apache.commons.logging::LogFactory.getLog("com.amazonaws.services.kinesis").
@@ -30,7 +58,7 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
 
     worker_id = java.util::UUID.randomUUID.to_s
     creds = com.amazonaws.auth::DefaultAWSCredentialsProviderChain.new()
-    @config = KCL::KinesisClientLibConfiguration.new(
+    @kcl_config = KCL::KinesisClientLibConfiguration.new(
       @application_name,
       @kinesis_stream_name,
       creds,
@@ -38,62 +66,33 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   end
 
   def run(output_queue)
-    @worker = KCL::Worker.new(
-      proc { Worker.new(@codec, output_queue, method(:decorate), @checkpoint_interval_seconds) },
-      @config,
-      com.amazonaws.services.kinesis.metrics.impl::NullMetricsFactory.new)
-    @worker.run()
+    worker_factory = proc { Worker.new(@codec.clone, output_queue, method(:decorate), @checkpoint_interval_seconds, @logger) }
+    if metrics_factory
+      @kcl_worker = @kcl_class.new(
+        worker_factory,
+        @kcl_config,
+        metrics_factory)
+    else
+      @kcl_worker = @kcl_class.new(
+        worker_factory,
+        @kcl_config)
+    end
+
+    @kcl_worker.run()
   end
 
   def teardown
-    @worker.shutdown if @worker
+    @kcl_worker.shutdown if @kcl_worker
   end
 
-  class Worker
-    include com.amazonaws.services.kinesis.clientlibrary.interfaces::IRecordProcessor
+  protected
 
-    def initialize(*args)
-      # nasty hack, because this is the name of a method on IRecordProcessor, but also ruby's constructor
-      if !@constructed
-        @codec, @output_queue, @decorator, @checkpoint_interval = args
-        @next_checkpoint = Time.now - 600
-        @constructed = true
-      else
-        _shard_id, _ = args
-        @decoder = java.nio.charset::Charset.forName("UTF-8").newDecoder()
-      end
-    end
-
-    def processRecords(records, checkpointer)
-      records.each { |record| process_record(record) }
-      if Time.now >= @next_checkpoint
-        checkpoint(checkpointer)
-        @next_checkpoint = Time.now + @checkpoint_interval
-      end
-    end
-
-    def shutdown(checkpointer, reason)
-      if reason == com.amazonaws.services.kinesis.clientlibrary.types::ShutdownReason::TERMINATE
-        checkpoint(checkpointer)
-      end
-    end
-
-    protected
-
-    def checkpoint(checkpointer)
-      checkpointer.checkpoint()
-    rescue => error
-      @logger.error("Kinesis worker failed checkpointing: #{error}")
-    end
-
-    def process_record(record)
-      raw = @decoder.decode(record.getData).to_s
-      @codec.decode(raw) do |event|
-        @decorator.call(event)
-        @output_queue << event
-      end
-    rescue => error
-      @logger.error("Error processing record: #{error}")
+  def metrics_factory
+    case @metrics
+    when nil
+      com.amazonaws.services.kinesis.metrics.impl::NullMetricsFactory.new
+    when 'cloudwatch'
+      nil # default in the underlying library
     end
   end
 end

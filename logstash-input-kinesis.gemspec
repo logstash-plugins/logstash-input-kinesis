@@ -10,8 +10,8 @@ Gem::Specification.new do |spec|
   spec.email         = ["brian@codekitchen.net"]
   spec.summary       = %q{Logstash plugin for Kinesis input}
   spec.description   = %q{This gem is a logstash plugin required to be installed on top of the Logstash core pipeline using $LS_HOME/bin/plugin install gemname. This gem is not a stand-alone program}
-  spec.homepage      = ""
-  spec.license       = "MIT"
+  spec.homepage      = "https://github.com/codekitchen/logstash-input-kinesis"
+  spec.licenses      = ['Apache License (2.0)']
 
   spec.files         = %w[Gemfile LICENSE.txt README.md Rakefile] + Dir.glob("lib/logstash/inputs/**/*")
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})

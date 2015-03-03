@@ -1,30 +1,32 @@
-# Logstash::Input::Kinesis
+# Logstash AWS Kinesis Input Plugin
 
-TODO: Write a gem description
+This is a plugin for [Logstash](https://github.com/elasticsearch/logstash).
 
 ## Installation
 
-Add this line to your application's Gemfile:
+This plugin requires Logstash 1.5, and can be installed by Logstash
+itself.
 
-```ruby
-gem 'logstash-input-kinesis'
+```sh
+$(LOGSTASH_DIR)/bin/plugin install logstash-input-kinesis
 ```
-
-And then execute:
-
-    $ bundle
-
-Or install it yourself as:
-
-    $ gem install logstash-input-kinesis
 
 ## Usage
 
-TODO: Write usage instructions here
+```
+input {
+  kinesis {
+    kinesis_stream_name => "my-logging-stream"
+    codec => json { }
+  }
+}
+```
+
+At least `kinesis_stream_name` is requred.
 
 ## Contributing
 
-1. Fork it ( https://github.com/[my-github-username]/logstash-input-kinesis/fork )
+1. Fork it ( https://github.com/codekitchen/logstash-input-kinesis/fork )
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)

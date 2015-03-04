@@ -39,6 +39,9 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   # The kinesis stream name.
   config :kinesis_stream_name, :validate => :string, :required => true
 
+  # The AWS region for Kinesis, DynamoDB, and CloudWatch (if enabled)
+  config :region, :validate => :string, :default => "us-east-1"
+
   # How many seconds between worker checkpoints to dynamodb.
   config :checkpoint_interval_seconds, :validate => :number, :default => 60
 
@@ -62,7 +65,9 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
       @application_name,
       @kinesis_stream_name,
       creds,
-      worker_id).withInitialPositionInStream(KCL::InitialPositionInStream::TRIM_HORIZON)
+      worker_id).
+        withInitialPositionInStream(KCL::InitialPositionInStream::TRIM_HORIZON).
+        withRegionName(@region)
   end
 
   def run(output_queue)

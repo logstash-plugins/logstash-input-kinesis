@@ -19,6 +19,7 @@ RSpec.describe "inputs/kinesis" do
     "codec" => codec,
     "metrics" => metrics,
     "checkpoint_interval_seconds" => 120,
+    "region" => "ap-southeast-1",
   }}
 
   subject!(:kinesis) { LogStash::Inputs::Kinesis.new(config, kcl_class) }
@@ -35,6 +36,7 @@ RSpec.describe "inputs/kinesis" do
     kinesis.register
     expect(kinesis.kcl_config.applicationName).to eq("my-processor")
     expect(kinesis.kcl_config.streamName).to eq("run-specs")
+    expect(kinesis.kcl_config.regionName).to eq("ap-southeast-1")
     expect(kinesis.kcl_config.initialPositionInStream).to eq(KCL::InitialPositionInStream::TRIM_HORIZON)
   end
 

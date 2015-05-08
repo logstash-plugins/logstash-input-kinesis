@@ -24,9 +24,9 @@ Gem::Specification.new do |spec|
 
   spec.requirements << "jar 'com.amazonaws:amazon-kinesis-client', '1.2.1'"
 
-  spec.add_runtime_dependency 'jar-dependencies', '0.1.7'
+  spec.add_runtime_dependency 'jar-dependencies', '~> 0.1.7'
   spec.add_runtime_dependency 'ruby-maven', '3.1.1.0.8'
-  spec.add_runtime_dependency "maven-tools", '1.0.7'
+  spec.add_runtime_dependency "maven-tools", '~> 1.0.7'
 
   spec.add_development_dependency "bundler", "~> 1.7"
   spec.add_development_dependency "rake", "~> 10.0"

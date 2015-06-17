@@ -12,4 +12,3 @@
 *.o
 *.a
 mkmf.log
-lib/logstash-input-kinesis_jars.rb

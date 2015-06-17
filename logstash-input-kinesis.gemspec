@@ -13,7 +13,7 @@ Gem::Specification.new do |spec|
   spec.homepage      = "https://github.com/codekitchen/logstash-input-kinesis"
   spec.licenses      = ['Apache License (2.0)']
 
-  spec.files         = %w[Gemfile LICENSE.txt README.md Rakefile] + Dir.glob("lib/logstash/inputs/**/*")
+  spec.files         = `git ls-files`.split($\)
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ["lib"]
 

@@ -41,7 +41,7 @@ This are the properties you can configure and what are the default values:
     * **default value**: `60`
 * `metrics`: Worker metric tracking. By default this is disabled, set it to "cloudwatch" to enable the cloudwatch integration in the Kinesis Client Library. 
     * **required**: false
-    * **default value**: `60`
+    * **default value**: `nil`
 
 ## Authentication
 

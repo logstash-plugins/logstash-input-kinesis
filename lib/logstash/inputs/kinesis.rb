@@ -22,7 +22,7 @@ require "logstash/inputs/kinesis/version"
 # The library can optionally also send worker statistics to CloudWatch.
 class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   KCL = com.amazonaws.services.kinesis.clientlibrary.lib.worker
-  KCL_PROCESSOR_FACTORY_CLASS = "com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessorFactory"
+  KCL_PROCESSOR_FACTORY_CLASS = com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessorFactory
   require "logstash/inputs/kinesis/worker"
 
   config_name 'kinesis'
@@ -30,7 +30,6 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
 
   attr_reader(
     :kcl_config,
-    :kcl_builder,
     :kcl_worker,
   )
 
@@ -51,15 +50,7 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   # to enable the cloudwatch integration in the Kinesis Client Library.
   config :metrics, :validate => [nil, "cloudwatch"], :default => nil
 
-  #what a nasty hack to use the overloaded method :_(
-  java_import KCL::Worker::Builder
-  class Builder
-    #I don't know how to make it work using the class directly
-    java_alias :v2RecordProcessorFactory, :recordProcessorFactory, [Java::JavaClass.for_name(KCL_PROCESSOR_FACTORY_CLASS)]
-  end
-
-  def initialize(params = {}, kcl_builder = Builder.new)
-    @kcl_builder = kcl_builder
+  def initialize(params = {})
     super(params)
   end
 
@@ -80,20 +71,27 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   end
 
   def run(output_queue)
-    worker_factory = proc { Worker.new(@codec.clone, output_queue, method(:decorate), @checkpoint_interval_seconds, @logger) }
-    @kcl_builder.v2RecordProcessorFactory(worker_factory)
-    @kcl_builder.config(@kcl_config)
-
-    if metrics_factory
-      @kcl_builder.metricsFactory(metrics_factory)
-    end
-
-    @kcl_worker = @kcl_builder.build
+    @kcl_worker = kcl_builder(output_queue).build
     @kcl_worker.run
+  end
+
+  def kcl_builder(output_queue)
+    KCL::Worker::Builder.new.tap do |builder|
+      builder.java_send(:recordProcessorFactory, [KCL_PROCESSOR_FACTORY_CLASS.java_class], worker_factory(output_queue))
+      builder.config(@kcl_config)
+
+      if metrics_factory
+        builder.metricsFactory(metrics_factory)
+      end
+    end
   end
 
   def teardown
     @kcl_worker.shutdown if @kcl_worker
+  end
+
+  def worker_factory(output_queue)
+    proc { Worker.new(@codec.clone, output_queue, method(:decorate), @checkpoint_interval_seconds, @logger) }
   end
 
   protected

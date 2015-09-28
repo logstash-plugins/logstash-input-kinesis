@@ -6,31 +6,6 @@ require "logstash/codecs/json"
 RSpec.describe "inputs/kinesis" do
   KCL = com.amazonaws.services.kinesis.clientlibrary.lib.worker
 
-  # Since kinesis.rb is using now a builder, subclassing the kinesis Worker is no longer needed.
-  # This test only need to check if run method is called on the instance returned
-  class TestKCLBuilder < KCL::Worker::Builder
-    attr_reader :kcl_worker_factory, :kcl_metrics_factory
-
-    def initialize(worker_double)
-      super()
-      @worker = worker_double
-    end
-
-    # mimics the actual interface
-    def metricsFactory(factory)
-      @kcl_metrics_factory = factory
-    end     
-
-    # mimics aliased method interface
-    def v2RecordProcessorFactory(factory)
-      @kcl_worker_factory = factory
-    end 
-
-    def build
-      return @worker
-    end
-  end
-
   let(:config) {{
     "application_name" => "my-processor",
     "kinesis_stream_name" => "run-specs",
@@ -40,11 +15,12 @@ RSpec.describe "inputs/kinesis" do
     "region" => "ap-southeast-1",
   }}
 
-  subject!(:kinesis) { LogStash::Inputs::Kinesis.new(config, kcl_builder) }
-  let(:kcl_worker) { double('kcl_worker', run: nil) }
-  let(:kcl_builder) { TestKCLBuilder.new(kcl_worker) }
+  subject!(:kinesis) { LogStash::Inputs::Kinesis.new(config) }
+  let(:kcl_worker) { double('kcl_worker') }
+  let(:stub_builder) { double('kcl_builder', build: kcl_worker) }
   let(:metrics) { nil }
   let(:codec) { LogStash::Codecs::JSON.new() }
+  let(:queue) { Queue.new }
 
   it "registers without error" do
     input = LogStash::Plugin.lookup("input", "kinesis").new("kinesis_stream_name" => "specs", "codec" => codec)
@@ -60,49 +36,63 @@ RSpec.describe "inputs/kinesis" do
   end
 
   context "#run" do
-    let(:queue) { Queue.new }
-
-    before do
-      kinesis.register
-    end
-
     it "runs the KCL worker" do
+      expect(kinesis).to receive(:kcl_builder).with(queue).and_return(stub_builder)
       expect(kcl_worker).to receive(:run).with(no_args)
-      kinesis.run(queue)
+      builder = kinesis.run(queue)
     end
+  end
 
+  context "#worker_factory" do
     it "clones the codec for each worker" do
       expect(codec).to receive(:clone).once
-      kinesis.run(queue)
-
-      worker = kinesis.kcl_builder.kcl_worker_factory.call()
+      worker = kinesis.worker_factory(queue).call()
       expect(worker).to be_kind_of(LogStash::Inputs::Kinesis::Worker)
     end
 
-    it "generates a valid worker via the factory proc" do
-      kinesis.run(queue)
-      worker = kinesis.kcl_builder.kcl_worker_factory.call()
-      
+    it "generates a valid worker" do
+      worker = kinesis.worker_factory(queue).call()
+
       expect(worker.codec).to be_kind_of(codec.class)
       expect(worker.checkpoint_interval).to eq(120)
       expect(worker.output_queue).to eq(queue)
       expect(worker.decorator).to eq(kinesis.method(:decorate))
       expect(worker.logger).to eq(kinesis.logger)
     end
+  end
+
+  # these tests are heavily dependent on the current Worker::Builder
+  # implementation because its state is all private
+  context "#kcl_builder" do
+    let(:builder) { kinesis.kcl_builder(queue) }
+
+    it "sets the worker factory" do
+      expect(field(builder, "recordProcessorFactory")).to_not eq(nil)
+    end
+
+    it "sets the config" do
+      kinesis.register
+      config = field(builder, "config")
+      expect(config).to eq(kinesis.kcl_config)
+    end
 
     it "disables metric tracking by default" do
-      kinesis.run(queue)
-      expect(kinesis.kcl_builder.kcl_metrics_factory).to be_kind_of(com.amazonaws.services.kinesis.metrics.impl::NullMetricsFactory)
+      expect(field(builder, "metricsFactory")).to be_kind_of(com.amazonaws.services.kinesis.metrics.impl::NullMetricsFactory)
     end
 
     context "cloudwatch" do
       let(:metrics) { "cloudwatch" }
       it "uses cloudwatch metrics if specified" do
-        kinesis.run(queue)
-        # since the behaviour is enclosed on private methods it is not testable. So here 
+        # since the behaviour is enclosed on private methods it is not testable. So here
         # the expected value can be tested, not the result associated to set this value
-        expect(kinesis.kcl_builder.kcl_metrics_factory).to eq(nil)
+        expect(field(builder, "metricsFactory")).to eq(nil)
       end
     end
+  end
+
+  def field(obj, name)
+    field = obj.java_class.declared_field(name)
+    field.accessible = true
+    field.value(obj)
   end
 end

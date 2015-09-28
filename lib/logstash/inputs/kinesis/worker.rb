@@ -32,7 +32,7 @@ class LogStash::Inputs::Kinesis::Worker
 
   def shutdown(shutdown_input)
     if shutdown_input.reason == com.amazonaws.services.kinesis.clientlibrary.types::ShutdownReason::TERMINATE
-      checkpoint(checkpointer)
+      checkpoint(shutdown_input.checkpointer)
     end
   end
 

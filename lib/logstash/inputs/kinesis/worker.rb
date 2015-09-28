@@ -1,5 +1,5 @@
 class LogStash::Inputs::Kinesis::Worker
-  include com.amazonaws.services.kinesis.clientlibrary.interfaces::IRecordProcessor
+  include com.amazonaws.services.kinesis.clientlibrary.interfaces.v2::IRecordProcessor
 
   attr_reader(
     :checkpoint_interval,
@@ -16,22 +16,22 @@ class LogStash::Inputs::Kinesis::Worker
       @next_checkpoint = Time.now - 600
       @constructed = true
     else
-      _shard_id, _ = args
+      _shard_id = args[0].shardId
       @decoder = java.nio.charset::Charset.forName("UTF-8").newDecoder()
     end
   end
   public :initialize
 
-  def processRecords(records, checkpointer)
-    records.each { |record| process_record(record) }
+  def processRecords(records_input)
+    records_input.records.each { |record| process_record(record) }
     if Time.now >= @next_checkpoint
-      checkpoint(checkpointer)
+      checkpoint(records_input.checkpointer)
       @next_checkpoint = Time.now + @checkpoint_interval
     end
   end
 
-  def shutdown(checkpointer, reason)
-    if reason == com.amazonaws.services.kinesis.clientlibrary.types::ShutdownReason::TERMINATE
+  def shutdown(shutdown_input)
+    if shutdown_input.reason == com.amazonaws.services.kinesis.clientlibrary.types::ShutdownReason::TERMINATE
       checkpoint(checkpointer)
     end
   end

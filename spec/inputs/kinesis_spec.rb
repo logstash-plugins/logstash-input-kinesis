@@ -21,8 +21,8 @@ RSpec.describe "inputs/kinesis" do
       @kcl_metrics_factory = factory
     end     
 
-    # mimics the actual interface
-    def recordProcessorFactory(factory)
+    # mimics aliased method interface
+    def v2RecordProcessorFactory(factory)
       @kcl_worker_factory = factory
     end 
 
@@ -74,7 +74,7 @@ RSpec.describe "inputs/kinesis" do
     it "clones the codec for each worker" do
       expect(codec).to receive(:clone).once
       kinesis.run(queue)
-      
+
       worker = kinesis.kcl_builder.kcl_worker_factory.call()
       expect(worker).to be_kind_of(LogStash::Inputs::Kinesis::Worker)
     end

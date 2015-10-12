@@ -25,19 +25,19 @@ RSpec.describe "LogStash::Inputs::Kinesis::Worker" do
     double(getData: data)
   end
 
-  let(:process_input) { 
+  let(:process_input) {
     KCL_TYPES::ProcessRecordsInput.new()
         .withRecords(java.util.Arrays.asList([
-            record(id: "record1", message: "test1"), 
+            record(id: "record1", message: "test1"),
             record(id: "record2", message: "test2")
           ].to_java)
         )
-        .withCheckpointer(checkpointer) 
+        .withCheckpointer(checkpointer)
   }
-  let(:empty_process_input) { 
+  let(:empty_process_input) {
     KCL_TYPES::ProcessRecordsInput.new()
         .withRecords(java.util.Arrays.asList([].to_java))
-        .withCheckpointer(checkpointer) 
+        .withCheckpointer(checkpointer)
   }
 
   context "initialized" do
@@ -67,6 +67,18 @@ RSpec.describe "LogStash::Inputs::Kinesis::Worker" do
         allow(Time).to receive(:now).and_return(Time.now + 125)
         expect(checkpointer).to receive(:checkpoint).once
         worker.processRecords(empty_process_input)
+      end
+    end
+
+    describe "#shutdown" do
+      it "checkpoints on termination" do
+        input = KCL_TYPES::ShutdownInput.new
+        checkpointer = double('checkpointer')
+        expect(checkpointer).to receive(:checkpoint)
+        input.
+          with_shutdown_reason(KCL_TYPES::ShutdownReason::TERMINATE).
+          with_checkpointer(checkpointer)
+        worker.shutdown(input)
       end
     end
   end

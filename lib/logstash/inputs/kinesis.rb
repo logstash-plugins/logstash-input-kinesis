@@ -26,7 +26,6 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   require "logstash/inputs/kinesis/worker"
 
   config_name 'kinesis'
-  milestone 1
 
   attr_reader(
     :kcl_config,

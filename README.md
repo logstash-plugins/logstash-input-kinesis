@@ -6,7 +6,7 @@ This is a [AWS Kinesis](http://docs.aws.amazon.com/kinesis/latest/dev/introducti
 
 ## Installation
 
-This plugin requires Logstash 1.5, and can be installed by Logstash
+This plugin requires Logstash >= 1.5, and can be installed by Logstash
 itself.
 
 ```sh

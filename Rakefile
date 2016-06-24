@@ -8,8 +8,14 @@ end
 
 task default: "spec"
 
-task "vendor_jars" do
-  sh "mvn dependency:copy-dependencies -DoutputDirectory=vendor/jar-dependencies/runtime-jars/"
+require 'jars/installer'
+task :install_jars do
+  # If we don't have these env variables set, jar-dependencies will
+  # download the jars and place it in $PWD/lib/. We actually want them in
+  # $PWD/vendor
+  ENV['JARS_HOME'] = Dir.pwd + "/vendor/jar-dependencies/runtime-jars"
+  ENV['JARS_VENDOR'] = "false"
+  Jars::Installer.new.vendor_jars!(false)
 end
 
-task build: "vendor_jars"
+task build: :install_jars

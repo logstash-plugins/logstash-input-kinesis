@@ -61,6 +61,7 @@ Look at the [documentation](https://docs.aws.amazon.com/AWSJavaSDK/latest/javado
 
 ## Contributing
 
+0. https://github.com/elastic/logstash/blob/master/CONTRIBUTING.md#contribution-steps
 1. Fork it ( https://github.com/logstash-plugins/logstash-input-kinesis/fork )
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)

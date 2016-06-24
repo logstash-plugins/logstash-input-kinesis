@@ -10,7 +10,7 @@ RSpec.describe "LogStash::Inputs::Kinesis::Worker" do
   subject!(:worker) { LogStash::Inputs::Kinesis::Worker.new(codec, queue, decorator, checkpoint_interval) }
   let(:codec) { LogStash::Codecs::JSON.new() }
   let(:queue) { Queue.new }
-  let(:decorator) { proc { |x| x.set("decorated", true); x } }
+  let(:decorator) { proc { |x| x["decorated"] = true; x } }
   let(:checkpoint_interval) { 120 }
   let(:checkpointer) { double('checkpointer', checkpoint: nil) }
   let(:init_input) { KCL_TYPES::InitializationInput.new().withShardId("xyz") }
@@ -48,13 +48,14 @@ RSpec.describe "LogStash::Inputs::Kinesis::Worker" do
     describe "#processRecords" do
       it "decodes and queues each record with decoration" do
         worker.processRecords(process_input)
+        expect(queue.size).to eq(2)
         m1 = queue.pop
         m2 = queue.pop
         expect(m1).to be_kind_of(LogStash::Event)
         expect(m2).to be_kind_of(LogStash::Event)
-        expect(m1.get('id')).to eq("record1")
-        expect(m1.get('message')).to eq("test1")
-        expect(m1.get('decorated')).to eq(true)
+        expect(m1['id']).to eq("record1")
+        expect(m1['message']).to eq("test1")
+        expect(m1['decorated']).to eq(true)
       end
 
       it "checkpoints on interval" do

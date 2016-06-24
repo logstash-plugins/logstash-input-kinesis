@@ -45,9 +45,10 @@ RSpec.describe "inputs/kinesis" do
 
   context "#worker_factory" do
     it "clones the codec for each worker" do
-      expect(codec).to receive(:clone).once
       worker = kinesis.worker_factory(queue).call()
       expect(worker).to be_kind_of(LogStash::Inputs::Kinesis::Worker)
+      expect(worker.codec).to_not eq(kinesis.codec)
+      expect(worker.codec).to be_kind_of(codec.class)
     end
 
     it "generates a valid worker" do

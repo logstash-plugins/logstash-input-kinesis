@@ -9,6 +9,7 @@ end
 task default: "spec"
 
 require 'jars/installer'
+desc 'Install the JAR dependencies to vendor/'
 task :install_jars do
   # If we don't have these env variables set, jar-dependencies will
   # download the jars and place it in $PWD/lib/. We actually want them in

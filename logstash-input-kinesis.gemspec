@@ -25,7 +25,7 @@ Gem::Specification.new do |spec|
   spec.requirements << "jar 'com.amazonaws:amazon-kinesis-client', '1.6.1'"
   spec.requirements << "jar 'org.apache.httpcomponents:httpclient', '4.5.1'"
 
-  spec.add_development_dependency 'jar-dependencies', '~> 0.3.2'
+  spec.add_development_dependency 'jar-dependencies', '0.3.2'
 
   spec.add_development_dependency "bundler", "~> 1.7"
   spec.add_development_dependency "rake", "~> 10.0"

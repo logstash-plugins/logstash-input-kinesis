@@ -1,6 +1,6 @@
 # Logstash AWS Kinesis Input Plugin
 
-[![Build Status](https://travis-ci.org/codekitchen/logstash-input-kinesis.svg)](https://travis-ci.org/codekitchen/logstash-input-kinesis)
+[![Build Status](https://travis-ci.org/logstash-plugins/logstash-input-kinesis.svg)](https://travis-ci.org/logstash-plugins/logstash-input-kinesis)
 
 This is a [AWS Kinesis](http://docs.aws.amazon.com/kinesis/latest/dev/introduction.html) input plugin for [Logstash](https://github.com/elasticsearch/logstash). Under the hood uses the [Kinesis Client Library](http://docs.aws.amazon.com/kinesis/latest/dev/kinesis-record-processor-implementation-app-java.html).
 
@@ -39,7 +39,7 @@ This are the properties you can configure and what are the default values:
 * `checkpoint_interval_seconds`: How many seconds between worker checkpoints to DynamoDB. A low value ussually means lower message replay in case of node failure/restart but it increases CPU+network ussage (which increases the AWS costs).
     * **required**: false
     * **default value**: `60`
-* `metrics`: Worker metric tracking. By default this is disabled, set it to "cloudwatch" to enable the cloudwatch integration in the Kinesis Client Library. 
+* `metrics`: Worker metric tracking. By default this is disabled, set it to "cloudwatch" to enable the cloudwatch integration in the Kinesis Client Library.
     * **required**: false
     * **default value**: `nil`
 
@@ -61,7 +61,7 @@ Look at the [documentation](https://docs.aws.amazon.com/AWSJavaSDK/latest/javado
 
 ## Contributing
 
-1. Fork it ( https://github.com/codekitchen/logstash-input-kinesis/fork )
+1. Fork it ( https://github.com/logstash-plugins/logstash-input-kinesis/fork )
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)

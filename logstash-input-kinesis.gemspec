@@ -13,7 +13,7 @@ Gem::Specification.new do |spec|
   spec.homepage      = "https://github.com/codekitchen/logstash-input-kinesis"
   spec.licenses      = ['Apache License (2.0)']
 
-  spec.files         = `git ls-files`.split($\)
+  spec.files         = `git ls-files`.split($\) + Dir['vendor/jar-dependencies/runtime-jars/*.jar']
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ["lib"]
 
@@ -22,7 +22,7 @@ Gem::Specification.new do |spec|
 
   spec.platform      = 'java'
 
-  spec.requirements << "jar 'com.amazonaws:amazon-kinesis-client', '1.2.1'"
+  spec.requirements << "jar 'com.amazonaws:amazon-kinesis-client', '1.6.1'"
   spec.requirements << "jar 'org.apache.httpcomponents:httpclient', '4.5.1'"
 
   spec.add_development_dependency 'jar-dependencies', '~> 0.3.2'

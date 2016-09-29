@@ -1,3 +1,4 @@
+# encoding: utf-8
 class LogStash::Inputs::Kinesis::Worker
   include com.amazonaws.services.kinesis.clientlibrary.interfaces.v2::IRecordProcessor
 

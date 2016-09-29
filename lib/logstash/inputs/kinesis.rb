@@ -85,7 +85,7 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
     end
   end
 
-  def teardown
+  def stop
     @kcl_worker.shutdown if @kcl_worker
   end
 

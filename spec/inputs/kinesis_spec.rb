@@ -43,6 +43,16 @@ RSpec.describe "inputs/kinesis" do
     end
   end
 
+  context "#stop" do
+    it "stops the KCL worker" do
+      expect(kinesis).to receive(:kcl_builder).with(queue).and_return(stub_builder)
+      expect(kcl_worker).to receive(:run).with(no_args)
+      expect(kcl_worker).to receive(:shutdown).with(no_args)
+      kinesis.run(queue)
+      kinesis.do_stop # do_stop calls stop internally
+    end
+  end
+
   context "#worker_factory" do
     it "clones the codec for each worker" do
       worker = kinesis.worker_factory(queue).call()

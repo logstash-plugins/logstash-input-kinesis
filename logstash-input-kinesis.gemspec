@@ -22,8 +22,8 @@ Gem::Specification.new do |spec|
 
   spec.platform      = 'java'
 
-  spec.requirements << "jar 'com.amazonaws:amazon-kinesis-client', '1.6.1'"
-  spec.requirements << "jar 'org.apache.httpcomponents:httpclient', '4.5.1'"
+  spec.requirements << "jar 'com.amazonaws:amazon-kinesis-client', '1.7.0'"
+  spec.requirements << "jar 'com.amazonaws:aws-java-sdk-core', '1.11.16'"
 
   spec.add_development_dependency 'jar-dependencies', '0.3.2'
 

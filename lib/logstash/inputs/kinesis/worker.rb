@@ -48,6 +48,8 @@ class LogStash::Inputs::Kinesis::Worker
     raw = String.from_java_bytes(record.array)
     @codec.decode(raw) do |event|
       @decorator.call(event)
+      event["approximate_arrival_timestamp"] = record.getApproximateArrivalTimestamp.getTime
+      event["partition_key"] = record.getPartitionKey
       @output_queue << event
     end
   rescue => error

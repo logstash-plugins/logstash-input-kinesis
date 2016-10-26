@@ -18,13 +18,12 @@ class LogStash::Inputs::Kinesis::Worker
       @constructed = true
     else
       _shard_id = args[0].shardId
-      @decoder = java.nio.charset::Charset.forName("UTF-8").newDecoder()
     end
   end
   public :initialize
 
   def processRecords(records_input)
-    records_input.records.each { |record| process_record(record) }
+    records_input.records.each { |record| process_record(record.getData) }
     if Time.now >= @next_checkpoint
       checkpoint(records_input.checkpointer)
       @next_checkpoint = Time.now + @checkpoint_interval
@@ -46,7 +45,7 @@ class LogStash::Inputs::Kinesis::Worker
   end
 
   def process_record(record)
-    raw = @decoder.decode(record.getData).to_s
+    raw = String.from_java_bytes(record.array)
     @codec.decode(raw) do |event|
       @decorator.call(event)
       @output_queue << event

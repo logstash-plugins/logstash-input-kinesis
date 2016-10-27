@@ -19,18 +19,38 @@ RSpec.describe "LogStash::Inputs::Kinesis::Worker" do
     expect { worker.initialize(init_input) }.to_not raise_error
   end
 
-  def record(hash = { "message" => "test" })
+  def record(hash = { "message" => "test" }, arrival_timestamp, partition_key, sequence_number)
     encoder = java.nio.charset::Charset.forName("UTF-8").newEncoder()
     data = encoder.encode(java.nio.CharBuffer.wrap(JSON.generate(hash)))
-    double(getData: data)
+    double(
+      getData: data,
+      getApproximateArrivalTimestamp: java.util.Date.new(arrival_timestamp.to_f * 1000),
+      getPartitionKey: partition_key,
+      getSequenceNumber: sequence_number
+    )
   end
 
   let(:process_input) {
     KCL_TYPES::ProcessRecordsInput.new()
         .withRecords(java.util.Arrays.asList([
-            record(id: "record1", message: "test1"),
-            record(id: "record2", message: "test2")
-          ].to_java)
+          record(
+            {
+              id: "record1",
+              message: "test1"
+            },
+            '1.441215410867E9',
+            'partitionKey1',
+            '21269319989652663814458848515492872191'
+          ),
+          record(
+            {
+              id: "record2",
+              message: "test2"
+            },
+            '1.441215410868E9',
+            'partitionKey2',
+            '21269319989652663814458848515492872192'
+          )].to_java)
         )
         .withCheckpointer(checkpointer)
   }
@@ -55,6 +75,9 @@ RSpec.describe "LogStash::Inputs::Kinesis::Worker" do
         expect(m2).to be_kind_of(LogStash::Event)
         expect(m1.get('id')).to eq("record1")
         expect(m1.get('message')).to eq("test1")
+        expect(m1.get('@metadata')['approximate_arrival_timestamp']).to eq(1441215410867)
+        expect(m1.get('@metadata')['partition_key']).to eq('partitionKey1')
+        expect(m1.get('@metadata')['sequence_number']).to eq('21269319989652663814458848515492872191')
         expect(m1.get('decorated')).to eq(true)
       end
 

@@ -23,7 +23,7 @@ class LogStash::Inputs::Kinesis::Worker
   public :initialize
 
   def processRecords(records_input)
-    records_input.records.each { |record| process_record(record.getData) }
+    records_input.records.each { |record| process_record(record) }
     if Time.now >= @next_checkpoint
       checkpoint(records_input.checkpointer)
       @next_checkpoint = Time.now + @checkpoint_interval
@@ -45,12 +45,23 @@ class LogStash::Inputs::Kinesis::Worker
   end
 
   def process_record(record)
-    raw = String.from_java_bytes(record.array)
+    raw = String.from_java_bytes(record.getData.array)
+    metadata = build_metadata(record)
     @codec.decode(raw) do |event|
       @decorator.call(event)
+      event.set('@metadata', metadata)
       @output_queue << event
     end
   rescue => error
     @logger.error("Error processing record: #{error}")
   end
+
+  def build_metadata(record)
+    metadata = Hash.new
+    metadata['approximate_arrival_timestamp'] = record.getApproximateArrivalTimestamp.getTime
+    metadata['partition_key'] = record.getPartitionKey
+    metadata['sequence_number'] = record.getSequenceNumber
+    metadata
+  end
+
 end

@@ -15,7 +15,7 @@ Gem::Specification.new do |spec|
 
   spec.files         = Dir['lib/**/*','spec/**/*','vendor/**/*','*.gemspec','*.md','CONTRIBUTORS','Gemfile','LICENSE','NOTICE.TXT']
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
-  spec.require_paths = ["lib"]
+  spec.require_paths = ['lib', 'vendor/jar-dependencies/runtime-jars']
 
   # Special flag to let us know this is actually a logstash plugin
   spec.metadata      = { "logstash_plugin" => "true", "logstash_group" => "input" }
@@ -28,6 +28,6 @@ Gem::Specification.new do |spec|
   spec.add_runtime_dependency "logstash-core-plugin-api", ">= 1.60", "<= 2.99"
 
   spec.add_development_dependency 'logstash-devutils'
-  spec.add_development_dependency 'jar-dependencies', '0.3.2'
+  spec.add_development_dependency 'jar-dependencies', '~> 0.3.4'
   spec.add_development_dependency "logstash-codec-json"
 end

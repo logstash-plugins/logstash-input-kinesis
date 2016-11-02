@@ -10,7 +10,7 @@ This plugin requires Logstash >= 2.0, and can be installed by Logstash
 itself.
 
 ```sh
-$(LOGSTASH_DIR)/bin/plugin install logstash-input-kinesis
+bin/logstash-plugin install logstash-input-kinesis
 ```
 
 ## Usage

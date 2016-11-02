@@ -24,6 +24,10 @@ input {
 }
 ```
 
+### Using with CloudWatch Logs
+
+If you are looking to read a CloudWatch Logs subscription stream, you'll also want to install and configure the [CloudWatch Logs Codec](https://github.com/threadwaste/logstash-codec-cloudwatch_logs).
+
 ## Configuration
 
 This are the properties you can configure and what are the default values:

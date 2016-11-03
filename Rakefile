@@ -11,12 +11,9 @@ task default: "spec"
 require 'jars/installer'
 desc 'Install the JAR dependencies to vendor/'
 task :install_jars do
-  # If we don't have these env variables set, jar-dependencies will
-  # download the jars and place it in $PWD/lib/. We actually want them in
-  # $PWD/vendor
-  ENV['JARS_HOME'] = Dir.pwd + "/vendor/jar-dependencies/runtime-jars"
-  ENV['JARS_VENDOR'] = "false"
-  Jars::Installer.new.vendor_jars!(false)
+  # We actually want jar-dependencies will download the jars and place it in
+  # vendor/jar-dependencies/runtime-jars
+  Jars::Installer.new.vendor_jars!(false, 'vendor/jar-dependencies/runtime-jars')
 end
 
 task build: :install_jars

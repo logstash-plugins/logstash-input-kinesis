@@ -1,3 +1,4 @@
+require 'logstash-core/logstash-core'
 require 'logstash-input-kinesis_jars'
 require "logstash/plugin"
 require "logstash/inputs/kinesis"

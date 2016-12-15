@@ -3,7 +3,6 @@ require "logstash/inputs/base"
 require "logstash/errors"
 require "logstash/environment"
 require "logstash/namespace"
-require 'logstash-core-plugin-api/version'
 
 require 'logstash-input-kinesis_jars'
 require "logstash/inputs/kinesis/version"
@@ -57,12 +56,11 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
 
   def register
     # the INFO log level is extremely noisy in KCL
-    if Gem::Version.new(LOGSTASH_CORE_PLUGIN_API) > Gem::Version.new('2.1.12')
-      org.apache.commons.logging::LogFactory.getLog("com.amazonaws.services.kinesis").
-        logger.setLevel(org.apache.log4j::Level::WARN)
+    kinesis_logger = org.apache.commons.logging::LogFactory.getLog("com.amazonaws.services.kinesis").logger
+    if kinesis_logger.java_kind_of?(java.util.logging::Logger)
+      kinesis_logger.setLevel(java.util.logging::Level::WARNING)
     else
-      org.apache.commons.logging::LogFactory.getLog("com.amazonaws.services.kinesis").
-        logger.setLevel(java.util.logging::Level::WARNING)
+      kinesis_logger.setLevel(org.apache.log4j::Level::WARN)
     end
 
     worker_id = java.util::UUID.randomUUID.to_s

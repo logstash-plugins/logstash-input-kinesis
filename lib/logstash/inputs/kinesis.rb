@@ -50,6 +50,9 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   # to enable the cloudwatch integration in the Kinesis Client Library.
   config :metrics, :validate => [nil, "cloudwatch"], :default => nil
 
+  # Set kinesis endpoint for testing and development
+  config :kinesis_endpoint, :validate => :string, :default => nil
+
   def initialize(params = {})
     super(params)
   end
@@ -72,6 +75,9 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
       worker_id).
         withInitialPositionInStream(KCL::InitialPositionInStream::TRIM_HORIZON).
         withRegionName(@region)
+    if @kinesis_endpoint
+      @kcl_config = @kcl_config.withKinesisEndpoint(@kinesis_endpoint)
+    end
   end
 
   def run(output_queue)

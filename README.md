@@ -46,10 +46,13 @@ This are the properties you can configure and what are the default values:
 * `metrics`: Worker metric tracking. By default this is disabled, set it to "cloudwatch" to enable the cloudwatch integration in the Kinesis Client Library.
     * **required**: false
     * **default value**: `nil`
+* `profile`: The AWS profile name for authentication. This ensures that the `~/.aws/credentials` AWS auth provider is used. By default this is empty and the default chain will be used.
+    * **required**: false
+    * **default value**: `""`    
 
 ## Authentication
 
-This plugin uses the default AWS SDK auth chain, [DefaultAWSCredentialsProviderChain](https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/DefaultAWSCredentialsProviderChain.html), to determine which credentials the client will use.
+This plugin uses the default AWS SDK auth chain, [DefaultAWSCredentialsProviderChain](https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/DefaultAWSCredentialsProviderChain.html), to determine which credentials the client will use, unless `profile` is set, in which case [ProfileCredentialsProvider](http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/profile/ProfileCredentialsProvider.html) is used.
 
 The default chain follows this order trying to read the credentials:
  * `AWS_ACCESS_KEY_ID` / `AWS_SECRET_KEY` environment variables
@@ -61,7 +64,7 @@ The credentials will need access to the following services:
 * AWS DynamoDB: the client library stores information for worker coordination in DynamoDB (offsets and active worker per partition)
 * AWS CloudWatch: if the metrics are enabled the credentials need CloudWatch update permisions granted.
 
-Look at the [documentation](https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/DefaultAWSCredentialsProviderChain.html) for deeper information.
+Look at the [documentation](https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/DefaultAWSCredentialsProviderChain.html) for deeper information on the default chain.
 
 ## Contributing
 

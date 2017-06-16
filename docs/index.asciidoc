@@ -16,7 +16,7 @@ END - GENERATED VARIABLES, DO NOT EDIT!
 
 [id="plugins-{type}-{plugin}"]
 
-=== Kinesis
+=== Kinesis input plugin
 
 include::{include_path}/plugin_header.asciidoc[]
 

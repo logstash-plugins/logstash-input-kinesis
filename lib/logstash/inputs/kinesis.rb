@@ -70,7 +70,7 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
 
     # If the AWS profile is set, use the profile credentials provider.
     # Otherwise fall back to the default chain.
-    unless @profile.empty? do
+    unless @profile.empty?
       creds = com.amazonaws.auth.profile::ProfileCredentialsProvider.new(String @profile)
     else
       creds = com.amazonaws.auth::DefaultAWSCredentialsProviderChain.new

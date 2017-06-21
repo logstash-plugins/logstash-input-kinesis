@@ -2,27 +2,6 @@ require "logstash/plugin"
 require "logstash/inputs/kinesis"
 require "logstash/codecs/json"
 
-KCL2 = com.amazonaws.services.kinesis.clientlibrary.lib.worker
-
-config2={
-  "application_name" => "my-processor",
-  "kinesis_stream_name" => "run-specs",
-  "codec" => LogStash::Codecs::JSON.new(),
-  "metrics" => nil,
-  "checkpoint_interval_seconds" => 120,
-  "region" => "ap-southeast-1",
-}
-
-kinesis2=LogStash::Inputs::Kinesis.new(config2)
-kinesis2.register
-
-puts kinesis2.kcl_config.get_kinesis_credentials_provider.getClass.to_s
-if kinesis2.kcl_config.get_kinesis_credentials_provider.getClass.to_s == "com.amazonaws.auth.profile.ProfileCredentialsProvider"
-  puts "tes"
-else
-  puts "nes"
-end
-
 RSpec.describe "inputs/kinesis" do
   KCL = com.amazonaws.services.kinesis.clientlibrary.lib.worker
 

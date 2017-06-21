@@ -51,7 +51,7 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   config :metrics, :validate => [nil, "cloudwatch"], :default => nil
 
   # Select AWS profile for input
-  config :profile, :validate => :string, :default => ""
+  config :profile, :validate => :string
 
   def initialize(params = {})
     super(params)
@@ -70,8 +70,8 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
 
     # If the AWS profile is set, use the profile credentials provider.
     # Otherwise fall back to the default chain.
-    unless @profile.empty?
-      creds = com.amazonaws.auth.profile::ProfileCredentialsProvider.new(String @profile)
+    unless @profile.nil?
+      creds = com.amazonaws.auth.profile::ProfileCredentialsProvider.new(@profile)
     else
       creds = com.amazonaws.auth::DefaultAWSCredentialsProviderChain.new
     end

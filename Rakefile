@@ -18,3 +18,4 @@ task :install_jars do
 end
 
 task build: :install_jars
+task vendor: :install_jars

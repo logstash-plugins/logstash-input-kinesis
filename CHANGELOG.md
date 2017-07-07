@@ -1,5 +1,6 @@
 ## 2.0.5
  -  Docs: Add CHANGELOG.md
+ - Support for specifying an AWS credentials profile with the `profile` config parameter.
 
 ## 2.0.4
  -  Docs: Bump version for automated doc build

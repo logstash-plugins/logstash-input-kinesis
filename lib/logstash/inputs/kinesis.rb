@@ -50,6 +50,9 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   # to enable the cloudwatch integration in the Kinesis Client Library.
   config :metrics, :validate => [nil, "cloudwatch"], :default => nil
 
+  # Select AWS profile for input
+  config :profile, :validate => :string
+
   def initialize(params = {})
     super(params)
   end
@@ -64,7 +67,14 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
     end
 
     worker_id = java.util::UUID.randomUUID.to_s
-    creds = com.amazonaws.auth::DefaultAWSCredentialsProviderChain.new
+
+    # If the AWS profile is set, use the profile credentials provider.
+    # Otherwise fall back to the default chain.
+    unless @profile.nil?
+      creds = com.amazonaws.auth.profile::ProfileCredentialsProvider.new(@profile)
+    else
+      creds = com.amazonaws.auth::DefaultAWSCredentialsProviderChain.new
+    end
     @kcl_config = KCL::KinesisClientLibConfiguration.new(
       @application_name,
       @kinesis_stream_name,

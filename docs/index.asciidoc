@@ -1,5 +1,3 @@
-Sending Logstash's logs to  which is now configured via log4j2.properties
-~~~ASCIIDOC_DOCUMENT~~~
 :plugin: kinesis
 :type: input
 

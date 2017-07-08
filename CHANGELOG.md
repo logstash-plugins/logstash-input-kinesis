@@ -1,6 +1,9 @@
+## 2.0.6
+ - Docs: Remove extraneous text added during doc extract
+
 ## 2.0.5
- -  Docs: Add CHANGELOG.md
- - Support for specifying an AWS credentials profile with the `profile` config parameter.
+ - Docs: Add CHANGELOG.md
+ - Support for specifying an AWS credentials profile with the `profile` config parameter
 
 ## 2.0.4
  -  Docs: Bump version for automated doc build

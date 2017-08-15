@@ -1,4 +1,7 @@
 ## 2.0.5
+  - Fix some documentation issues
+
+## 2.0.5
  - Docs: Add CHANGELOG.md
  - Support for specifying an AWS credentials profile with the `profile` config parameter
  - Docs: Remove extraneous text added during doc extract

@@ -53,6 +53,8 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   # Select AWS profile for input
   config :profile, :validate => :string
 
+  config :initial_position_in_stream, :validate => :string, :default => "TRIM_HORIZON"
+
   def initialize(params = {})
     super(params)
   end

@@ -26,6 +26,18 @@ RSpec.describe "inputs/kinesis" do
     "profile" => "my-aws-profile"
   }}
 
+  # other config with LATEST as initial_position_in_stream
+  let(:config_with_latest) {{
+    "application_name" => "my-processor",
+    "kinesis_stream_name" => "run-specs",
+    "codec" => codec,
+    "metrics" => metrics,
+    "checkpoint_interval_seconds" => 120,
+    "region" => "ap-southeast-1",
+    "profile" => nil,
+    "initial_position_in_stream" => "LATEST"
+  }}
+
   subject!(:kinesis) { LogStash::Inputs::Kinesis.new(config) }
   let(:kcl_worker) { double('kcl_worker') }
   let(:stub_builder) { double('kcl_builder', build: kcl_worker) }
@@ -52,6 +64,17 @@ RSpec.describe "inputs/kinesis" do
   it "uses ProfileCredentialsProvider if profile is specified" do
     kinesis_with_profile.register
     expect(kinesis_with_profile.kcl_config.get_kinesis_credentials_provider.getClass.to_s).to eq("com.amazonaws.auth.profile.ProfileCredentialsProvider")
+  end
+
+  subject!(:kinesis_with_latest) { LogStash::Inputs::Kinesis.new(config_with_latest) }
+
+  it "configures the KCL" do
+    kinesis_with_latest.register
+    expect(kinesis_with_latest.kcl_config.applicationName).to eq("my-processor")
+    expect(kinesis_with_latest.kcl_config.streamName).to eq("run-specs")
+    expect(kinesis_with_latest.kcl_config.regionName).to eq("ap-southeast-1")
+    expect(kinesis_with_latest.kcl_config.initialPositionInStream).to eq(KCL::InitialPositionInStream::LATEST)
+    expect(kinesis_with_latest.kcl_config.get_kinesis_credentials_provider.getClass.to_s).to eq("com.amazonaws.auth.DefaultAWSCredentialsProviderChain")
   end
 
   context "#run" do

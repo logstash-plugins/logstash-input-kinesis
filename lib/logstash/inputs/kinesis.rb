@@ -54,7 +54,7 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   config :profile, :validate => :string
 
   # Select initial_position_in_stream. Accepts TRIM_HORIZON or LATEST
-  config :initial_position_in_stream, :validate => :string, :default => "TRIM_HORIZON"
+  config :initial_position_in_stream, :validate => ["TRIM_HORIZON", "LATEST"], :default => "TRIM_HORIZON"
 
   def initialize(params = {})
     super(params)

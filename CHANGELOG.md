@@ -1,5 +1,6 @@
-## 2.0.5
-  - Fix some documentation issues
+## 2.0.6
+ - Fix some documentation issues
+ - Add support for `initial_position_in_stream` config parameter. `TRIM_HORIZON` and `LATEST` are supported.
 
 ## 2.0.5
  - Docs: Add CHANGELOG.md

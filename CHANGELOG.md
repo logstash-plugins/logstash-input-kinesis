@@ -1,4 +1,7 @@
 ## 2.0.6
+  - Update gemspec summary
+
+## 2.0.6
  - Fix some documentation issues
  - Add support for `initial_position_in_stream` config parameter. `TRIM_HORIZON` and `LATEST` are supported.
 

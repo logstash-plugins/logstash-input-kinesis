@@ -8,7 +8,7 @@ Gem::Specification.new do |spec|
   spec.version       = Logstash::Input::Kinesis::VERSION
   spec.authors       = ["Brian Palmer"]
   spec.email         = ["brian@codekitchen.net"]
-  spec.summary       = %q{Logstash plugin for Kinesis input}
+  spec.summary       = "Receives events through an AWS Kinesis stream"
   spec.description   = %q{This gem is a logstash plugin required to be installed on top of the Logstash core pipeline using $LS_HOME/bin/plugin install gemname. This gem is not a stand-alone program}
   spec.homepage      = "https://github.com/logstash-plugins/logstash-input-kinesis"
   spec.licenses      = ['Apache License (2.0)']

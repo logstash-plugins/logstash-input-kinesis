@@ -15,7 +15,7 @@ if [[ -f "ci/run.sh" ]]; then
     source ./ci/run.sh
 else
     echo "Running default build scripts in: `pwd`/ci/build.sh"
-    bundle install --clean --force
+    bundle install
     bundle exec rake vendor
     bundle exec rspec spec
 fi

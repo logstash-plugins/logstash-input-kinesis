@@ -7,6 +7,7 @@ require "json"
 
 RSpec.describe "LogStash::Inputs::Kinesis::Worker" do
   KCL_TYPES = com.amazonaws.services.kinesis.clientlibrary.types
+  WORKER_TYPES = com.amazonaws.services.kinesis.clientlibrary.lib.worker
 
   subject!(:worker) { LogStash::Inputs::Kinesis::Worker.new(codec, queue, decorator, checkpoint_interval) }
   let(:codec) { LogStash::Codecs::JSON.new() }
@@ -101,7 +102,7 @@ RSpec.describe "LogStash::Inputs::Kinesis::Worker" do
         checkpointer = double('checkpointer')
         expect(checkpointer).to receive(:checkpoint)
         input.
-          with_shutdown_reason(KCL_TYPES::ShutdownReason::TERMINATE).
+          with_shutdown_reason(WORKER_TYPES::ShutdownReason::TERMINATE).
           with_checkpointer(checkpointer)
         worker.shutdown(input)
       end

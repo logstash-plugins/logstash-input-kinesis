@@ -15,15 +15,12 @@ Gem::Specification.new do |spec|
 
   spec.files         = Dir['lib/**/*','spec/**/*','vendor/**/*','*.gemspec','*.md','CONTRIBUTORS','Gemfile','LICENSE','NOTICE.TXT']
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
-  spec.require_paths = ['lib', 'vendor/jar-dependencies/runtime-jars']
+  spec.require_paths = ['lib', 'vendor/jar-dependencies/']
 
   # Special flag to let us know this is actually a logstash plugin
   spec.metadata      = { "logstash_plugin" => "true", "logstash_group" => "input" }
 
   spec.platform      = 'java'
-
-  spec.requirements << "jar 'com.amazonaws:amazon-kinesis-client', '1.7.0'"
-  spec.requirements << "jar 'com.amazonaws:aws-java-sdk-core', '1.11.16'"
 
   spec.add_runtime_dependency "logstash-core-plugin-api", ">= 1.60", "<= 2.99"
 

@@ -14,3 +14,6 @@
 mkmf.log
 vendor/
 /*.gem
+/.gradle/
+/build/
+*.idea

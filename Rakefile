@@ -1,23 +1,19 @@
-require "bundler/gem_tasks"
-require 'jars/version'
 
-begin
-  require 'rspec/core/rake_task'
-  RSpec::Core::RakeTask.new(:spec)
-rescue LoadError
-end
-
-task default: "spec"
-
-require 'jars/installer'
-desc 'Install the JAR dependencies to vendor/'
-task :install_jars do
-  # We actually want jar-dependencies will download the jars and place it in
-  # vendor/jar-dependencies/runtime-jars
-  Jars::Installer.new.vendor_jars!(false, 'vendor/jar-dependencies/runtime-jars')
-end
-
-task build: :install_jars
+# encoding: utf-8
 require "logstash/devutils/rake"
-task vendor: :install_jars
+require "jars/installer"
+require "fileutils"
 
+task :default do
+  system('rake -vT')
+end
+
+task :vendor do
+  exit(1) unless system './gradlew vendor'
+end
+
+task :clean do
+  ["vendor/jar-dependencies", "Gemfile.lock"].each do |p|
+    FileUtils.rm_rf(p)
+  end
+end

@@ -55,6 +55,9 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   # Select AWS profile for input
   config :profile, :validate => :string
 
+  # Assume a different role using STS, for example if the stream is in a different AWS account
+  config :role_arn, :validate => :string
+
   # Select initial_position_in_stream. Accepts TRIM_HORIZON or LATEST
   config :initial_position_in_stream, :validate => ["TRIM_HORIZON", "LATEST"], :default => "TRIM_HORIZON"
 
@@ -85,6 +88,15 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
     else
       creds = com.amazonaws.auth::DefaultAWSCredentialsProviderChain.new
     end
+
+    # If a role ARN is set then assume the role as a new layer over the credentials already created
+    unless @role_arn.nil?
+      session_id = "worker" + worker_id
+      kinesis_creds = com.amazonaws.auth::STSAssumeRoleSessionCredentialsProvider.new(creds, @role_arn, session_id)
+    else
+      kinesis_creds = creds
+    end
+
     initial_position_in_stream = if @initial_position_in_stream == "TRIM_HORIZON"
       KCL::InitialPositionInStream::TRIM_HORIZON
     else
@@ -94,7 +106,9 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
     @kcl_config = KCL::KinesisClientLibConfiguration.new(
       @application_name,
       @kinesis_stream_name,
-      creds,
+      kinesis_creds, # credential provider for accessing the kinesis stream
+      creds, # credential provider for creating / accessing the dynamo table
+      creds, # credential provider for cloudwatch metrics
       worker_id).
         withInitialPositionInStream(initial_position_in_stream).
         withRegionName(@region)

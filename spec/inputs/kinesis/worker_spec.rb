@@ -101,7 +101,7 @@ RSpec.describe "LogStash::Inputs::Kinesis::Worker" do
         checkpointer = double('checkpointer')
         expect(checkpointer).to receive(:checkpoint)
         input.
-          with_shutdown_reason(KCL_TYPES::ShutdownReason::TERMINATE).
+          with_shutdown_reason(com.amazonaws.services.kinesis.clientlibrary.lib.worker::ShutdownReason::TERMINATE).
           with_checkpointer(checkpointer)
         worker.shutdown(input)
       end

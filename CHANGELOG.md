@@ -1,5 +1,5 @@
-## Unreleased
-  - Changed plugin to use more recent versions of Kinesis Client library and AWS SDK
+## 2.0.8
+  - Changed plugin to use more recent versions of Kinesis Client library and AWS SDK[#45](https://github.com/logstash-plugins/logstash-input-kinesis/pull/45)
 
 ## 2.0.7
   - Docs: Set the default_codec doc attribute.

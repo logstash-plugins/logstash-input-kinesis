@@ -1,4 +1,6 @@
 # encoding: utf-8
+
+require "socket"
 require "logstash/inputs/base"
 require "logstash/errors"
 require "logstash/environment"
@@ -69,7 +71,9 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
       kinesis_logger.setLevel(org.apache.log4j::Level::WARN)
     end
 
-    worker_id = java.util::UUID.randomUUID.to_s
+    hostname = Socket.gethostname
+    uuid = java.util::UUID.randomUUID.to_s
+    worker_id = "#{hostname}:#{uuid}"
 
     # If the AWS profile is set, use the profile credentials provider.
     # Otherwise fall back to the default chain.

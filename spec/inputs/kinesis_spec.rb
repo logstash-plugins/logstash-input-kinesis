@@ -26,6 +26,17 @@ RSpec.describe "inputs/kinesis" do
     "profile" => "my-aws-profile"
   }}
 
+  # Config hash to test credentials provider to be used if profile is specified
+  let(:config_with_role_arn) {{
+    "application_name" => "my-processor",
+    "kinesis_stream_name" => "run-specs",
+    "codec" => codec,
+    "metrics" => metrics,
+    "checkpoint_interval_seconds" => 120,
+    "region" => "ap-southeast-1",
+    "role_arn" => "arn:my-aws-role"
+  }}
+
   # other config with LATEST as initial_position_in_stream
   let(:config_with_latest) {{
     "application_name" => "my-processor",
@@ -64,6 +75,13 @@ RSpec.describe "inputs/kinesis" do
   it "uses ProfileCredentialsProvider if profile is specified" do
     kinesis_with_profile.register
     expect(kinesis_with_profile.kcl_config.get_kinesis_credentials_provider.getClass.to_s).to eq("com.amazonaws.auth.profile.ProfileCredentialsProvider")
+  end
+
+  subject!(:kinesis_with_role_arn) { LogStash::Inputs::Kinesis.new(config_with_role_arn) }
+
+  it "uses STSAssumeRoleSessionCredentialsProvider if role_arn is specified" do
+    kinesis_with_role_arn.register
+    expect(kinesis_with_role_arn.kcl_config.get_kinesis_credentials_provider.getClass.to_s).to eq("com.amazonaws.auth.STSAssumeRoleSessionCredentialsProvider")
   end
 
   subject!(:kinesis_with_latest) { LogStash::Inputs::Kinesis.new(config_with_latest) }

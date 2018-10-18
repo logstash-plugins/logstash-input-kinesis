@@ -53,6 +53,9 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   # Select AWS profile for input
   config :profile, :validate => :string
 
+  # Select AWS role arn for input
+  config :role_arn, :validate => :string
+
   # Select initial_position_in_stream. Accepts TRIM_HORIZON or LATEST
   config :initial_position_in_stream, :validate => ["TRIM_HORIZON", "LATEST"], :default => "TRIM_HORIZON"
 
@@ -77,6 +80,9 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
       creds = com.amazonaws.auth.profile::ProfileCredentialsProvider.new(@profile)
     else
       creds = com.amazonaws.auth::DefaultAWSCredentialsProviderChain.new
+    end
+    unless @role_arn.nil?
+      creds = com.amazonaws.auth::STSAssumeRoleSessionCredentialsProvider.new(creds, @role_arn, @application_name)
     end
     initial_position_in_stream = if @initial_position_in_stream == "TRIM_HORIZON"
       KCL::InitialPositionInStream::TRIM_HORIZON

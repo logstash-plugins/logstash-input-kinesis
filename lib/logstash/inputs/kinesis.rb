@@ -46,6 +46,10 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   # How many seconds between worker checkpoints to dynamodb.
   config :checkpoint_interval_seconds, :validate => :number, :default => 60
 
+  # How many milliseconds to wait since the last checkpoint before a new
+  # worker should take over the lease.
+  config :failover_time_millis, :validate => :number, :default => 120000
+
   # Worker metric tracking. By default this is disabled, set it to "cloudwatch"
   # to enable the cloudwatch integration in the Kinesis Client Library.
   config :metrics, :validate => [nil, "cloudwatch"], :default => nil
@@ -90,7 +94,8 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
       creds,
       worker_id).
         withInitialPositionInStream(initial_position_in_stream).
-        withRegionName(@region)
+        withRegionName(@region).
+        withFailoverTimeMillis(@failover_time_millis)
   end
 
   def run(output_queue)

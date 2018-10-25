@@ -43,6 +43,9 @@ This are the properties you can configure and what are the default values:
 * `checkpoint_interval_seconds`: How many seconds between worker checkpoints to DynamoDB. A low value ussually means lower message replay in case of node failure/restart but it increases CPU+network ussage (which increases the AWS costs).
     * **required**: false
     * **default value**: `60`
+* `failover_time_millis`: How many milliseconds to wait since the last checkpoint before a new worker should take over the lease.
+    * **required**: false
+    * **default value**: `120000`
 * `metrics`: Worker metric tracking. By default this is disabled, set it to "cloudwatch" to enable the cloudwatch integration in the Kinesis Client Library.
     * **required**: false
     * **default value**: `nil`

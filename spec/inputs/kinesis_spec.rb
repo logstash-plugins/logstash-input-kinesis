@@ -38,6 +38,50 @@ RSpec.describe "inputs/kinesis" do
     "initial_position_in_stream" => "LATEST"
   }}
 
+  # Config hash to test valid additional_kcl_options
+  let(:config_with_valid_additional_kcl_options) {{
+    "application_name" => "my-processor",
+    "kinesis_stream_name" => "run-specs",
+    "codec" => codec,
+    "metrics" => metrics,
+    "checkpoint_interval_seconds" => 120,
+    "region" => "ap-southeast-1",
+    "profile" => nil,
+    "additional_kcl_options" => {
+        "initial_lease_table_read_capacity" => 25,
+        "initial_lease_table_write_capacity" => 100,
+        "kinesis_endpoint" => "http://www.localhost"
+    }
+  }}
+
+  # Config hash to test invalid additional_kcl_options where the name is not found
+  let(:config_with_invalid_additional_kcl_options_name_not_found) {{
+    "application_name" => "my-processor",
+    "kinesis_stream_name" => "run-specs",
+    "codec" => codec,
+    "metrics" => metrics,
+    "checkpoint_interval_seconds" => 120,
+    "region" => "ap-southeast-1",
+    "profile" => nil,
+    "additional_kcl_options" => {
+        "foo" => "bar"
+    }
+  }}
+
+  # Config hash to test invalid additional_kcl_options where the type is complex or wrong
+  let(:config_with_invalid_additional_kcl_options_wrong_type) {{
+    "application_name" => "my-processor",
+    "kinesis_stream_name" => "run-specs",
+    "codec" => codec,
+    "metrics" => metrics,
+    "checkpoint_interval_seconds" => 120,
+    "region" => "ap-southeast-1",
+    "profile" => nil,
+    "additional_kcl_options" => {
+        "metrics_level" => "invalid_metrics_level"
+    }
+  }}
+
   subject!(:kinesis) { LogStash::Inputs::Kinesis.new(config) }
   let(:kcl_worker) { double('kcl_worker') }
   let(:stub_builder) { double('kcl_builder', build: kcl_worker) }
@@ -76,6 +120,19 @@ RSpec.describe "inputs/kinesis" do
     expect(kinesis_with_latest.kcl_config.initialPositionInStream).to eq(KCL::InitialPositionInStream::LATEST)
     expect(kinesis_with_latest.kcl_config.get_kinesis_credentials_provider.getClass.to_s).to eq("com.amazonaws.auth.DefaultAWSCredentialsProviderChain")
   end
+
+  subject!(:kinesis_with_valid_additional_kcl_options) { LogStash::Inputs::Kinesis.new(config_with_valid_additional_kcl_options) }
+
+  it "configures the KCL" do
+    kinesis_with_latest.register
+    expect(kinesis_with_latest.kcl_config.applicationName).to eq("my-processor")
+    expect(kinesis_with_latest.kcl_config.streamName).to eq("run-specs")
+    expect(kinesis_with_latest.kcl_config.regionName).to eq("ap-southeast-1")
+    expect(kinesis_with_latest.kcl_config.initialLeaseTableReadCapacity).to eq(25)
+    expect(kinesis_with_latest.kcl_config.initialLeaseTableWriteCapacity).to eq(100)
+    expect(kinesis_with_latest.kcl_config.kinesisEndpoint).to eq("http://localhost")
+  end
+
 
   context "#run" do
     it "runs the KCL worker" do

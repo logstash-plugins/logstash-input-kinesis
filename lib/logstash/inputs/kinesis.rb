@@ -58,6 +58,9 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   # Select initial_position_in_stream. Accepts TRIM_HORIZON or LATEST
   config :initial_position_in_stream, :validate => ["TRIM_HORIZON", "LATEST"], :default => "TRIM_HORIZON"
 
+  # Any additional arbitrary kcl options configurable in the KinesisClientLibConfiguration
+  config :additional_kcl_options, :validate => :hash, :default => {}
+
   def initialize(params = {})
     super(params)
   end
@@ -95,6 +98,14 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
       worker_id).
         withInitialPositionInStream(initial_position_in_stream).
         withRegionName(@region)
+
+      # Call arbitrary "withX()" functions
+      # replace snake_case => withCamelCase
+      # e.g. initial_position_in_stream => withInitialPositionInStream
+      @additional_kcl_options.each do |key, value|
+          fn = 'with' + key.title().replace('_', '')
+          @kcl_config.send(fn, value)
+      end
   end
 
   def run(output_queue)

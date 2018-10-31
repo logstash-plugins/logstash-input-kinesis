@@ -1,3 +1,6 @@
+## 2.0.9
+  - Changed the 'workerid' to also include the host of the Logstash node [#48](https://github.com/logstash-plugins/logstash-input-kinesis/pull/48)
+
 ## 2.0.8
   - Changed plugin to use more recent versions of Kinesis Client library and AWS SDK[#45](https://github.com/logstash-plugins/logstash-input-kinesis/pull/45)
 

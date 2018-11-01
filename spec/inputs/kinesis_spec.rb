@@ -134,6 +134,20 @@ RSpec.describe "inputs/kinesis" do
   end
 
 
+  subject!(:kinesis_with_invalid_additional_kcl_options_name_not_found) { LogStash::Inputs::Kinesis.new(config_with_invalid_additional_kcl_options_name_not_found) }
+
+  it "raises NoMethodError for invalid configuration options" do
+    expect{ kinesis_with_invalid_additional_kcl_options_name_not_found.register }.to raise_error(NoMethodError)
+  end
+
+
+  subject!(:kinesis_with_invalid_additional_kcl_options_wrong_type) { LogStash::Inputs::Kinesis.new(config_with_invalid_additional_kcl_options_wrong_type) }
+
+  it "raises an error for invalid configuration values such as the wrong type" do
+    expect{ kinesis_with_invalid_additional_kcl_options_wrong_type.register }.to raise_error(Java::JavaLang::IllegalArgumentException)
+  end
+
+
   context "#run" do
     it "runs the KCL worker" do
       expect(kinesis).to receive(:kcl_builder).with(queue).and_return(stub_builder)

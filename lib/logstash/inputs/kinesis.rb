@@ -96,10 +96,9 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
         withRegionName(@region)
 
       # Call arbitrary "withX()" functions
-      # replace snake_case => withCamelCase
-      # e.g. initial_position_in_stream => withInitialPositionInStream
+      # snake_case => withCamelCase happens automatically
       @additional_kcl_options.each do |key, value|
-          fn = 'with' + key.title().replace('_', '')
+          fn = "with_#{key}"
           @kcl_config.send(fn, value)
       end
   end

@@ -38,8 +38,8 @@ RSpec.describe "inputs/kinesis" do
     "initial_position_in_stream" => "LATEST"
   }}
 
-  # Config hash to test valid additional_kcl_options
-  let(:config_with_valid_additional_kcl_options) {{
+  # Config hash to test valid additional_settings
+  let(:config_with_valid_additional_settings) {{
     "application_name" => "my-processor",
     "kinesis_stream_name" => "run-specs",
     "codec" => codec,
@@ -47,15 +47,15 @@ RSpec.describe "inputs/kinesis" do
     "checkpoint_interval_seconds" => 120,
     "region" => "ap-southeast-1",
     "profile" => nil,
-    "additional_kcl_options" => {
+    "additional_settings" => {
         "initial_lease_table_read_capacity" => 25,
         "initial_lease_table_write_capacity" => 100,
         "kinesis_endpoint" => "http://localhost"
     }
   }}
 
-  # Config hash to test invalid additional_kcl_options where the name is not found
-  let(:config_with_invalid_additional_kcl_options_name_not_found) {{
+  # Config hash to test invalid additional_settings where the name is not found
+  let(:config_with_invalid_additional_settings_name_not_found) {{
     "application_name" => "my-processor",
     "kinesis_stream_name" => "run-specs",
     "codec" => codec,
@@ -63,13 +63,13 @@ RSpec.describe "inputs/kinesis" do
     "checkpoint_interval_seconds" => 120,
     "region" => "ap-southeast-1",
     "profile" => nil,
-    "additional_kcl_options" => {
+    "additional_settings" => {
         "foo" => "bar"
     }
   }}
 
-  # Config hash to test invalid additional_kcl_options where the type is complex or wrong
-  let(:config_with_invalid_additional_kcl_options_wrong_type) {{
+  # Config hash to test invalid additional_settings where the type is complex or wrong
+  let(:config_with_invalid_additional_settings_wrong_type) {{
     "application_name" => "my-processor",
     "kinesis_stream_name" => "run-specs",
     "codec" => codec,
@@ -77,7 +77,7 @@ RSpec.describe "inputs/kinesis" do
     "checkpoint_interval_seconds" => 120,
     "region" => "ap-southeast-1",
     "profile" => nil,
-    "additional_kcl_options" => {
+    "additional_settings" => {
         "metrics_level" => "invalid_metrics_level"
     }
   }}
@@ -121,30 +121,30 @@ RSpec.describe "inputs/kinesis" do
     expect(kinesis_with_latest.kcl_config.get_kinesis_credentials_provider.getClass.to_s).to eq("com.amazonaws.auth.DefaultAWSCredentialsProviderChain")
   end
 
-  subject!(:kinesis_with_valid_additional_kcl_options) { LogStash::Inputs::Kinesis.new(config_with_valid_additional_kcl_options) }
+  subject!(:kinesis_with_valid_additional_settings) { LogStash::Inputs::Kinesis.new(config_with_valid_additional_settings) }
 
   it "configures the KCL" do
-    kinesis_with_valid_additional_kcl_options.register
-    expect(kinesis_with_valid_additional_kcl_options.kcl_config.applicationName).to eq("my-processor")
-    expect(kinesis_with_valid_additional_kcl_options.kcl_config.streamName).to eq("run-specs")
-    expect(kinesis_with_valid_additional_kcl_options.kcl_config.regionName).to eq("ap-southeast-1")
-    expect(kinesis_with_valid_additional_kcl_options.kcl_config.initialLeaseTableReadCapacity).to eq(25)
-    expect(kinesis_with_valid_additional_kcl_options.kcl_config.initialLeaseTableWriteCapacity).to eq(100)
-    expect(kinesis_with_valid_additional_kcl_options.kcl_config.kinesisEndpoint).to eq("http://localhost")
+    kinesis_with_valid_additional_settings.register
+    expect(kinesis_with_valid_additional_settings.kcl_config.applicationName).to eq("my-processor")
+    expect(kinesis_with_valid_additional_settings.kcl_config.streamName).to eq("run-specs")
+    expect(kinesis_with_valid_additional_settings.kcl_config.regionName).to eq("ap-southeast-1")
+    expect(kinesis_with_valid_additional_settings.kcl_config.initialLeaseTableReadCapacity).to eq(25)
+    expect(kinesis_with_valid_additional_settings.kcl_config.initialLeaseTableWriteCapacity).to eq(100)
+    expect(kinesis_with_valid_additional_settings.kcl_config.kinesisEndpoint).to eq("http://localhost")
   end
 
 
-  subject!(:kinesis_with_invalid_additional_kcl_options_name_not_found) { LogStash::Inputs::Kinesis.new(config_with_invalid_additional_kcl_options_name_not_found) }
+  subject!(:kinesis_with_invalid_additional_settings_name_not_found) { LogStash::Inputs::Kinesis.new(config_with_invalid_additional_settings_name_not_found) }
 
   it "raises NoMethodError for invalid configuration options" do
-    expect{ kinesis_with_invalid_additional_kcl_options_name_not_found.register }.to raise_error(NoMethodError)
+    expect{ kinesis_with_invalid_additional_settings_name_not_found.register }.to raise_error(NoMethodError)
   end
 
 
-  subject!(:kinesis_with_invalid_additional_kcl_options_wrong_type) { LogStash::Inputs::Kinesis.new(config_with_invalid_additional_kcl_options_wrong_type) }
+  subject!(:kinesis_with_invalid_additional_settings_wrong_type) { LogStash::Inputs::Kinesis.new(config_with_invalid_additional_settings_wrong_type) }
 
   it "raises an error for invalid configuration values such as the wrong type" do
-    expect{ kinesis_with_invalid_additional_kcl_options_wrong_type.register }.to raise_error(Java::JavaLang::IllegalArgumentException)
+    expect{ kinesis_with_invalid_additional_settings_wrong_type.register }.to raise_error(Java::JavaLang::IllegalArgumentException)
   end
 
 

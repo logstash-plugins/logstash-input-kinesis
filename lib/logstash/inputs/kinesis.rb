@@ -57,7 +57,7 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   config :initial_position_in_stream, :validate => ["TRIM_HORIZON", "LATEST"], :default => "TRIM_HORIZON"
 
   # Any additional arbitrary kcl options configurable in the KinesisClientLibConfiguration
-  config :additional_kcl_options, :validate => :hash, :default => {}
+  config :additional_settings, :validate => :hash, :default => {}
 
   def initialize(params = {})
     super(params)
@@ -97,7 +97,7 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
 
       # Call arbitrary "withX()" functions
       # snake_case => withCamelCase happens automatically
-      @additional_kcl_options.each do |key, value|
+      @additional_settings.each do |key, value|
           fn = "with_#{key}"
           @kcl_config.send(fn, value)
       end

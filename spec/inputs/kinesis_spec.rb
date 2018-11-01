@@ -50,7 +50,7 @@ RSpec.describe "inputs/kinesis" do
     "additional_kcl_options" => {
         "initial_lease_table_read_capacity" => 25,
         "initial_lease_table_write_capacity" => 100,
-        "kinesis_endpoint" => "http://www.localhost"
+        "kinesis_endpoint" => "http://localhost"
     }
   }}
 
@@ -124,13 +124,13 @@ RSpec.describe "inputs/kinesis" do
   subject!(:kinesis_with_valid_additional_kcl_options) { LogStash::Inputs::Kinesis.new(config_with_valid_additional_kcl_options) }
 
   it "configures the KCL" do
-    kinesis_with_latest.register
-    expect(kinesis_with_latest.kcl_config.applicationName).to eq("my-processor")
-    expect(kinesis_with_latest.kcl_config.streamName).to eq("run-specs")
-    expect(kinesis_with_latest.kcl_config.regionName).to eq("ap-southeast-1")
-    expect(kinesis_with_latest.kcl_config.initialLeaseTableReadCapacity).to eq(25)
-    expect(kinesis_with_latest.kcl_config.initialLeaseTableWriteCapacity).to eq(100)
-    expect(kinesis_with_latest.kcl_config.kinesisEndpoint).to eq("http://localhost")
+    kinesis_with_valid_additional_kcl_options.register
+    expect(kinesis_with_valid_additional_kcl_options.kcl_config.applicationName).to eq("my-processor")
+    expect(kinesis_with_valid_additional_kcl_options.kcl_config.streamName).to eq("run-specs")
+    expect(kinesis_with_valid_additional_kcl_options.kcl_config.regionName).to eq("ap-southeast-1")
+    expect(kinesis_with_valid_additional_kcl_options.kcl_config.initialLeaseTableReadCapacity).to eq(25)
+    expect(kinesis_with_valid_additional_kcl_options.kcl_config.initialLeaseTableWriteCapacity).to eq(100)
+    expect(kinesis_with_valid_additional_kcl_options.kcl_config.kinesisEndpoint).to eq("http://localhost")
   end
 
 

@@ -1,3 +1,6 @@
+## 2.0.10
+  - Added the ability to set additional settings exposed through KinesisClientLibConfiguration [#51](https://github.com/logstash-plugins/logstash-input-kinesis/pull/51)
+
 ## 2.0.9
   - Changed the 'workerid' to also include the host of the Logstash node [#48](https://github.com/logstash-plugins/logstash-input-kinesis/pull/48)
 

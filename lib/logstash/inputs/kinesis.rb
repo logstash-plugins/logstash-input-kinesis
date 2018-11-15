@@ -45,6 +45,7 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
     :kcl_config,
     :metrics_config,
     :retrieval_config,
+    :lease_management_config,
     :kcl_worker,
   )
 
@@ -114,7 +115,10 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
     @metrics_config = @kcl_config.metrics_config.metrics_factory(metrics_factory)
 
     @retrieval_config = @kcl_config.retrieval_config.
-        initial_position_in_stream_extended(software.amazon.kinesis.common.InitialPositionInStreamExtended.new_initial_position(initial_position_in_stream))
+      initial_position_in_stream_extended(software.amazon.kinesis.common.InitialPositionInStreamExtended.new_initial_position(initial_position_in_stream))
+
+    @lease_management_config = @kcl_config.lease_management_config.
+      failover_time_millis(@checkpoint_interval_seconds * 1000 * 3)
   end
 
   def run(output_queue)
@@ -126,7 +130,7 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
     Scheduler.new(
       @kcl_config.checkpoint_config,
       @kcl_config.coordinator_config,
-      @kcl_config.lease_management_config,
+      @lease_management_config,
       @kcl_config.lifecycle_config,
       @metrics_config,
       # checkpointing is done on processRecords so we need Kinesis to always call us so we don't lose this shard

@@ -10,6 +10,10 @@ require 'logstash-input-kinesis_jars'
 require "logstash/inputs/kinesis/version"
 
 
+def software
+  Java::Software
+end
+
 # Receive events through an AWS Kinesis stream.
 #
 # This input plugin uses the Java Kinesis Client Library underneath, so the
@@ -24,14 +28,23 @@ require "logstash/inputs/kinesis/version"
 #
 # The library can optionally also send worker statistics to CloudWatch.
 class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
-  KCL = com.amazonaws.services.kinesis.clientlibrary.lib.worker
-  KCL_PROCESSOR_FACTORY_CLASS = com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessorFactory
+  ConfigsBuilder = software.amazon.kinesis.common.ConfigsBuilder
+  ProcessorConfig = software.amazon.kinesis.processor.ProcessorConfig
+  Scheduler = software.amazon.kinesis.coordinator.Scheduler
+
+  KinesisClientUtil = software.amazon.kinesis.common.KinesisClientUtil
+  KinesisAsyncClient = software.amazon.awssdk.services.kinesis.KinesisAsyncClient
+  DynamoDbAsyncClient = software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
+  CloudWatchAsyncClient = software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient
+
   require "logstash/inputs/kinesis/worker"
 
   config_name 'kinesis'
 
   attr_reader(
     :kcl_config,
+    :metrics_config,
+    :retrieval_config,
     :kcl_worker,
   )
 
@@ -58,22 +71,11 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   # Select initial_position_in_stream. Accepts TRIM_HORIZON or LATEST
   config :initial_position_in_stream, :validate => ["TRIM_HORIZON", "LATEST"], :default => "TRIM_HORIZON"
 
-  # Any additional arbitrary kcl options configurable in the KinesisClientLibConfiguration
-  config :additional_settings, :validate => :hash, :default => {}
-
   def initialize(params = {})
     super(params)
   end
 
   def register
-    # the INFO log level is extremely noisy in KCL
-    kinesis_logger = org.apache.commons.logging::LogFactory.getLog("com.amazonaws.services.kinesis").logger
-    if kinesis_logger.java_kind_of?(java.util.logging::Logger)
-      kinesis_logger.setLevel(java.util.logging::Level::WARNING)
-    else
-      kinesis_logger.setLevel(org.apache.log4j::Level::WARN)
-    end
-
     hostname = Socket.gethostname
     uuid = java.util::UUID.randomUUID.to_s
     worker_id = "#{hostname}:#{uuid}"
@@ -81,50 +83,78 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
     # If the AWS profile is set, use the profile credentials provider.
     # Otherwise fall back to the default chain.
     unless @profile.nil?
-      creds = com.amazonaws.auth.profile::ProfileCredentialsProvider.new(@profile)
+      creds = software.amazon.awssdk.auth.credentials::ProfileCredentialsProvider.create(@profile)
     else
-      creds = com.amazonaws.auth::DefaultAWSCredentialsProviderChain.new
+      creds = software.amazon.awssdk.auth.credentials::DefaultCredentialsProvider.create
     end
     initial_position_in_stream = if @initial_position_in_stream == "TRIM_HORIZON"
-      KCL::InitialPositionInStream::TRIM_HORIZON
+      software.amazon.kinesis.common.InitialPositionInStream::TRIM_HORIZON
     else
-      KCL::InitialPositionInStream::LATEST
+      software.amazon.kinesis.common.InitialPositionInStream::LATEST
     end
 
-    @kcl_config = KCL::KinesisClientLibConfiguration.new(
-      @application_name,
-      @kinesis_stream_name,
-      creds,
-      worker_id).
-        withInitialPositionInStream(initial_position_in_stream).
-        withRegionName(@region)
+    region = software.amazon.awssdk.regions.Region.of(@region)
 
-      # Call arbitrary "withX()" functions
-      # snake_case => withCamelCase happens automatically
-      @additional_settings.each do |key, value|
-          fn = "with_#{key}"
-          @kcl_config.send(fn, value)
-      end
+    kinesis_client = KinesisClientUtil.create_kinesis_async_client(KinesisAsyncClient.builder().region(region).credentials_provider(creds))
+    dynamodb_client = DynamoDbAsyncClient.builder().region(region).credentials_provider(creds).build
+    cloudwatch_client = CloudWatchAsyncClient.builder().region(region).credentials_provider(creds).build
+
+    @kcl_config = ConfigsBuilder.new(
+      @kinesis_stream_name,
+      @application_name,
+      kinesis_client,
+      dynamodb_client,
+      cloudwatch_client,
+      worker_id,
+      # cannot pass nil into ConfigsBuilder because Lombok will throw an NPE - this value
+      # (processor_config) should not be used.
+      worker_factory([])
+    )
+
+    @metrics_config = @kcl_config.metrics_config.metrics_factory(metrics_factory)
+
+    @retrieval_config = @kcl_config.retrieval_config.
+        initial_position_in_stream_extended(software.amazon.kinesis.common.InitialPositionInStreamExtended.new_initial_position(initial_position_in_stream))
   end
 
   def run(output_queue)
-    @kcl_worker = kcl_builder(output_queue).build
+    @kcl_worker = kcl_builder(output_queue)
     @kcl_worker.run
   end
 
   def kcl_builder(output_queue)
-    KCL::Worker::Builder.new.tap do |builder|
-      builder.java_send(:recordProcessorFactory, [KCL_PROCESSOR_FACTORY_CLASS.java_class], worker_factory(output_queue))
-      builder.config(@kcl_config)
-
-      if metrics_factory
-        builder.metricsFactory(metrics_factory)
-      end
-    end
+    Scheduler.new(
+      @kcl_config.checkpoint_config,
+      @kcl_config.coordinator_config,
+      @kcl_config.lease_management_config,
+      @kcl_config.lifecycle_config,
+      @metrics_config,
+      # checkpointing is done on processRecords so we need Kinesis to always call us so we don't lose this shard
+      # even when we're active
+      ProcessorConfig.new(worker_factory(output_queue)).call_process_records_even_for_empty_record_list(true),
+      @retrieval_config
+    )
   end
 
   def stop
-    @kcl_worker.shutdown if @kcl_worker
+    if not @kcl_worker
+      return
+    end
+
+    graceful_shutdown_future = @kcl_worker.start_graceful_shutdown
+
+    begin
+      graceful_shutdown_future.get(20, java.util.concurrent.TimeUnit::SECONDS)
+    rescue java.lang.InterruptedException
+      @logger.info("Interrupted while waiting for graceful shutdown. Attempting to force shutdown.")
+      @kcl_worker.shutdown
+    rescue java.util.concurrent.ExecutionException => error
+      @logger.error("Exception while executing graceful shutdown.", error)
+      raise error
+    rescue java.util.concurrent.TimeoutException
+      @logger.error("Timeout while waiting for shutdown. Scheduler may not have exited. Attempting to force shutdown.")
+      @kcl_worker.shutdown
+    end
   end
 
   def worker_factory(output_queue)
@@ -136,7 +166,7 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   def metrics_factory
     case @metrics
     when nil
-      com.amazonaws.services.kinesis.metrics.impl::NullMetricsFactory.new
+      software.amazon.kinesis.metrics::NullMetricsFactory.new
     when 'cloudwatch'
       nil # default in the underlying library
     end

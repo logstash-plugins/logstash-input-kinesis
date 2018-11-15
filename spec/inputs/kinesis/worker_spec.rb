@@ -6,15 +6,16 @@ require "logstash/codecs/json"
 require "json"
 
 RSpec.describe "LogStash::Inputs::Kinesis::Worker" do
-  KCL_TYPES = com.amazonaws.services.kinesis.clientlibrary.types
+  software = Java::Software
+  KCL_TYPES = software.amazon.kinesis.lifecycle
 
-  subject!(:worker) { LogStash::Inputs::Kinesis::Worker.new(codec, queue, decorator, checkpoint_interval) }
+  subject!(:worker) { LogStash::Inputs::Kinesis::Worker.new(codec, queue, decorator, checkpoint_interval, org.apache.logging.log4j.LogManager.getLogger()) }
   let(:codec) { LogStash::Codecs::JSON.new() }
   let(:queue) { Queue.new }
   let(:decorator) { proc { |x| x.set('decorated', true); x } }
   let(:checkpoint_interval) { 120 }
   let(:checkpointer) { double('checkpointer', checkpoint: nil) }
-  let(:init_input) { KCL_TYPES::InitializationInput.new().withShardId("xyz") }
+  let(:init_input) { KCL_TYPES.events::InitializationInput.builder().shardId("xyz").build }
 
   it "honors the initialize java interface method contract" do
     expect { worker.initialize(init_input) }.to_not raise_error
@@ -24,16 +25,16 @@ RSpec.describe "LogStash::Inputs::Kinesis::Worker" do
     encoder = java.nio.charset::Charset.forName("UTF-8").newEncoder()
     data = encoder.encode(java.nio.CharBuffer.wrap(JSON.generate(hash)))
     double(
-      getData: data,
-      getApproximateArrivalTimestamp: java.util.Date.new(arrival_timestamp.to_f * 1000),
-      getPartitionKey: partition_key,
-      getSequenceNumber: sequence_number
+      data: data,
+      approximateArrivalTimestamp: java.time.Instant.ofEpochMilli(arrival_timestamp.to_f * 1000),
+      partitionKey: partition_key,
+      sequenceNumber: sequence_number
     )
   end
 
   let(:process_input) {
-    KCL_TYPES::ProcessRecordsInput.new()
-        .withRecords(java.util.Arrays.asList([
+    KCL_TYPES.events::ProcessRecordsInput.builder()
+        .records(java.util.Arrays.asList([
           record(
             {
               id: "record1",
@@ -53,12 +54,14 @@ RSpec.describe "LogStash::Inputs::Kinesis::Worker" do
             '21269319989652663814458848515492872192'
           )].to_java)
         )
-        .withCheckpointer(checkpointer)
+        .checkpointer(checkpointer)
+        .build
   }
   let(:empty_process_input) {
-    KCL_TYPES::ProcessRecordsInput.new()
-        .withRecords(java.util.Arrays.asList([].to_java))
-        .withCheckpointer(checkpointer)
+    KCL_TYPES.events::ProcessRecordsInput.builder()
+        .records(java.util.Arrays.asList([].to_java))
+        .checkpointer(checkpointer)
+        .build
   }
 
   context "initialized" do
@@ -97,13 +100,21 @@ RSpec.describe "LogStash::Inputs::Kinesis::Worker" do
 
     describe "#shutdown" do
       it "checkpoints on termination" do
-        input = KCL_TYPES::ShutdownInput.new
         checkpointer = double('checkpointer')
         expect(checkpointer).to receive(:checkpoint)
-        input.
-          with_shutdown_reason(com.amazonaws.services.kinesis.clientlibrary.lib.worker::ShutdownReason::TERMINATE).
-          with_checkpointer(checkpointer)
-        worker.shutdown(input)
+        worker.shutdownRequested(KCL_TYPES::ShutdownInput.builder()
+          .shutdownReason(KCL_TYPES::ShutdownReason::REQUESTED)
+          .checkpointer(checkpointer)
+          .build)
+      end
+
+      it "checkpoints on shard ended" do
+        checkpointer = double('checkpointer')
+        expect(checkpointer).to receive(:checkpoint)
+        worker.shardEnded(KCL_TYPES::ShutdownInput.builder()
+          .shutdownReason(KCL_TYPES::ShutdownReason::SHARD_END)
+          .checkpointer(checkpointer)
+          .build)
       end
     end
   end

@@ -1,6 +1,8 @@
 # encoding: utf-8
 class LogStash::Inputs::Kinesis::Worker
-  include com.amazonaws.services.kinesis.clientlibrary.interfaces.v2::IRecordProcessor
+  software = Java::Software
+
+  include software.amazon.kinesis.processor::ShardRecordProcessor
 
   attr_reader(
     :checkpoint_interval,
@@ -30,10 +32,15 @@ class LogStash::Inputs::Kinesis::Worker
     end
   end
 
-  def shutdown(shutdown_input)
-    if shutdown_input.shutdown_reason == com.amazonaws.services.kinesis.clientlibrary.lib.worker::ShutdownReason::TERMINATE
-      checkpoint(shutdown_input.checkpointer)
-    end
+  def leaseLost(lease_lost_input)
+  end
+
+  def shardEnded(shard_ended_input)
+    checkpoint(shard_ended_input.checkpointer)
+  end
+
+  def shutdownRequested(shutdown_input)
+    checkpoint(shutdown_input.checkpointer)
   end
 
   protected
@@ -41,11 +48,17 @@ class LogStash::Inputs::Kinesis::Worker
   def checkpoint(checkpointer)
     checkpointer.checkpoint()
   rescue => error
-    @logger.error("Kinesis worker failed checkpointing: #{error}")
+    @logger.error("Kinesis worker failed checkpointing: #{error}", error)
   end
 
   def process_record(record)
-    raw = String.from_java_bytes(record.getData.array)
+    buf = record.data
+    buf.rewind
+    bytes = Java::byte[record.data.remaining].new
+    buf.get(bytes)
+
+    raw = String.from_java_bytes(bytes)
+
     metadata = build_metadata(record)
     @codec.decode(raw) do |event|
       @decorator.call(event)
@@ -53,14 +66,14 @@ class LogStash::Inputs::Kinesis::Worker
       @output_queue << event
     end
   rescue => error
-    @logger.error("Error processing record: #{error}")
+    @logger.error("Error processing record: #{error}", error)
   end
 
   def build_metadata(record)
     metadata = Hash.new
-    metadata['approximate_arrival_timestamp'] = record.getApproximateArrivalTimestamp.getTime
-    metadata['partition_key'] = record.getPartitionKey
-    metadata['sequence_number'] = record.getSequenceNumber
+    metadata['approximate_arrival_timestamp'] = record.approximateArrivalTimestamp.toEpochMilli
+    metadata['partition_key'] = record.partitionKey
+    metadata['sequence_number'] = record.sequenceNumber
     metadata
   end
 

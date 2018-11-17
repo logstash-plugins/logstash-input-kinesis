@@ -43,10 +43,14 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
 
   attr_reader(
     :kcl_config,
+    :kcl_worker,
+
+    :checkpoint_config,
+    :coordinator_config,
+    :lease_management_config,
+    :lifecycle_config,
     :metrics_config,
     :retrieval_config,
-    :lease_management_config,
-    :kcl_worker,
   )
 
   # The application name used for the dynamodb coordination table. Must be
@@ -71,6 +75,27 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
 
   # Select initial_position_in_stream. Accepts TRIM_HORIZON or LATEST
   config :initial_position_in_stream, :validate => ["TRIM_HORIZON", "LATEST"], :default => "TRIM_HORIZON"
+
+  # Any additional arbitrary kcl options configurable in the CheckpointConfig
+  config :checkpoint_additional_settings, :validate => :hash, :default => {}
+
+  # Any additional arbitrary kcl options configurable in the CoordinatorConfig
+  config :coordinator_additional_settings, :validate => :hash, :default => {}
+
+  # Any additional arbitrary kcl options configurable in the LeaseManagementConfig
+  config :lease_management_additional_settings, :validate => :hash, :default => {}
+
+  # Any additional arbitrary kcl options configurable in the LifecycleConfig
+  config :lifecycle_additional_settings, :validate => :hash, :default => {}
+
+  # Any additional arbitrary kcl options configurable in the MetricsConfig
+  config :metrics_additional_settings, :validate => :hash, :default => {}
+
+  # Any additional arbitrary kcl options configurable in the RetrievalConfig
+  config :retrieval_additional_settings, :validate => :hash, :default => {}
+
+  # Any additional arbitrary kcl options configurable in the ProcessorConfig
+  config :processor_additional_settings, :validate => :hash, :default => {}
 
   def initialize(params = {})
     super(params)
@@ -112,13 +137,30 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
       worker_factory([])
     )
 
+    @checkpoint_config = send_additional_settings(@kcl_config.checkpoint_config, @checkpoint_additional_settings)
+
+    @coordinator_config = send_additional_settings(@kcl_config.coordinator_config, @coordinator_additional_settings)
+
+    @lifecycle_config = send_additional_settings(@kcl_config.lifecycle_config, @lifecycle_additional_settings)
+
     @metrics_config = @kcl_config.metrics_config.metrics_factory(metrics_factory)
+    @metrics_config = send_additional_settings(@metrics_config, @metrics_additional_settings)
 
     @retrieval_config = @kcl_config.retrieval_config.
       initial_position_in_stream_extended(software.amazon.kinesis.common.InitialPositionInStreamExtended.new_initial_position(initial_position_in_stream))
+    @retrieval_config = send_additional_settings(@retrieval_config, @retrieval_additional_settings)
 
     @lease_management_config = @kcl_config.lease_management_config.
       failover_time_millis(@checkpoint_interval_seconds * 1000 * 3)
+    @lease_management_config = send_additional_settings(@lease_management_config, @lease_management_additional_settings)
+  end
+
+  def send_additional_settings(obj, options)
+    options.each do |key, value|
+      obj = obj.send(key, value)
+    end
+
+    obj
   end
 
   def run(output_queue)
@@ -128,14 +170,12 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
 
   def kcl_builder(output_queue)
     Scheduler.new(
-      @kcl_config.checkpoint_config,
-      @kcl_config.coordinator_config,
+      @checkpoint_config,
+      @coordinator_config,
       @lease_management_config,
-      @kcl_config.lifecycle_config,
+      @lifecycle_config,
       @metrics_config,
-      # checkpointing is done on processRecords so we need Kinesis to always call us so we don't lose this shard
-      # even when we're active
-      ProcessorConfig.new(worker_factory(output_queue)).call_process_records_even_for_empty_record_list(true),
+      send_additional_settings(ProcessorConfig.new(worker_factory(output_queue)), @processor_additional_settings),
       @retrieval_config
     )
   end

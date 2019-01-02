@@ -54,6 +54,9 @@ account. This role will be assumed after the default credentials or profile cred
 this is empty and a role will not be assumed.
     * **required**: false
     * **default value**: `""`
+* `role_session_name`: Session name to use when assuming an IAM role. This is recorded in CloudTrail logs for example.
+    * **required**: false
+    * **default value**: `"logstash"`
 * `initial_position_in_stream`: The value for initialPositionInStream. Accepts "TRIM_HORIZON" or "LATEST".
     * **required**: false
     * **default value**: `"TRIM_HORIZON"`

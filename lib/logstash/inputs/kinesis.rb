@@ -55,8 +55,13 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   # Select AWS profile for input
   config :profile, :validate => :string
 
-  # Assume a different role using STS, for example if the stream is in a different AWS account
+  # The AWS IAM Role to assume, if any.
+  # This is used to generate temporary credentials typically for cross-account access.
+  # See https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html for more information.
   config :role_arn, :validate => :string
+
+  # Session name to use when assuming an IAM role
+  config :role_session_name, :validate => :string, :default => "logstash"
 
   # Select initial_position_in_stream. Accepts TRIM_HORIZON or LATEST
   config :initial_position_in_stream, :validate => ["TRIM_HORIZON", "LATEST"], :default => "TRIM_HORIZON"
@@ -91,8 +96,7 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
 
     # If a role ARN is set then assume the role as a new layer over the credentials already created
     unless @role_arn.nil?
-      session_id = "worker" + worker_id
-      kinesis_creds = com.amazonaws.auth::STSAssumeRoleSessionCredentialsProvider.new(creds, @role_arn, session_id)
+      kinesis_creds = com.amazonaws.auth::STSAssumeRoleSessionCredentialsProvider.new(creds, @role_arn, @role_session_name)
     else
       kinesis_creds = creds
     end

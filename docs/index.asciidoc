@@ -47,8 +47,10 @@ This plugin supports the following configuration options plus the <<plugins-{typ
 | <<plugins-{type}s-{plugin}-checkpoint_interval_seconds>> |<<number,number>>|No
 | <<plugins-{type}s-{plugin}-kinesis_stream_name>> |<<string,string>>|Yes
 | <<plugins-{type}s-{plugin}-metrics>> |<<string,string>>, one of `[nil, "cloudwatch"]`|No
-| <<plugins-{type}s-{plugin}-region>> |<<string,string>>|No
 | <<plugins-{type}s-{plugin}-profile>> |<<string,string>>|No
+| <<plugins-{type}s-{plugin}-region>> |<<string,string>>|No
+| <<plugins-{type}s-{plugin}-role_arn>> |<<string,string>>|No
+| <<plugins-{type}s-{plugin}-role_session_name>> |<<string,string>>|No
 |=======================================================================
 
 Also see <<plugins-{type}s-{plugin}-common-options>> for a list of options supported by all
@@ -91,14 +93,6 @@ The kinesis stream name.
 Worker metric tracking. By default this is disabled, set it to "cloudwatch"
 to enable the cloudwatch integration in the Kinesis Client Library.
 
-[id="plugins-{type}s-{plugin}-region"]
-===== `region`
-
-  * Value type is <<string,string>>
-  * Default value is `"us-east-1"`
-
-The AWS region for Kinesis, DynamoDB, and CloudWatch (if enabled)
-
 [id="plugins-{type}s-{plugin}-profile"]
 ===== `profile`
 
@@ -108,6 +102,33 @@ The AWS region for Kinesis, DynamoDB, and CloudWatch (if enabled)
 The AWS profile name for authentication.
 This ensures that the `~/.aws/credentials` AWS auth provider is used.
 By default this is empty and the default chain will be used.
+
+[id="plugins-{type}s-{plugin}-region"]
+===== `region`
+
+  * Value type is <<string,string>>
+  * Default value is `"us-east-1"`
+
+The AWS region for Kinesis, DynamoDB, and CloudWatch (if enabled)
+
+[id="plugins-{type}s-{plugin}-role_arn"]
+===== `role_arn`
+
+  * Value type is <<string,string>>
+  * Default value is ``
+
+The AWS role to assume. This can be used, for example, to access a Kinesis stream in a different AWS
+account. This role will be assumed after the default credentials or profile credentials are created. By default
+this is empty and a role will not be assumed.
+
+[id="plugins-{type}s-{plugin}-role_session_name"]
+===== `role_session_name`
+
+  * Value type is <<string,string>>
+  * Default value is `logstash`
+
+Session name to use when assuming an IAM role. This is recorded in CloudTrail logs for example.
+
 
 [id="plugins-{type}s-{plugin}-common-options"]
 include::{include_path}/{type}.asciidoc[]

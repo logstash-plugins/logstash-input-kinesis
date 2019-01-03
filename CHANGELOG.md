@@ -1,3 +1,6 @@
+## 2.0.11
+  - Added the ability to assume a role [#40](https://github.com/logstash-plugins/logstash-input-kinesis/pull/40)
+
 ## 2.0.10
   - Added the ability to set additional settings exposed through KinesisClientLibConfiguration [#51](https://github.com/logstash-plugins/logstash-input-kinesis/pull/51)
 

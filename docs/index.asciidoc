@@ -97,7 +97,7 @@ to enable the cloudwatch integration in the Kinesis Client Library.
 ===== `profile`
 
   * Value type is <<string,string>>
-  * Default value is `nil`
+  * There is no default value for this setting.
 
 The AWS profile name for authentication.
 This ensures that the `~/.aws/credentials` AWS auth provider is used.
@@ -115,7 +115,7 @@ The AWS region for Kinesis, DynamoDB, and CloudWatch (if enabled)
 ===== `role_arn`
 
   * Value type is <<string,string>>
-  * Default value is ``
+  * There is no default value for this setting.
 
 The AWS role to assume. This can be used, for example, to access a Kinesis stream in a different AWS
 account. This role will be assumed after the default credentials or profile credentials are created. By default

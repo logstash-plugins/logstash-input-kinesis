@@ -48,12 +48,10 @@ This are the properties you can configure and what are the default values:
     * **default value**: `nil`
 * `profile`: The AWS profile name for authentication. This ensures that the `~/.aws/credentials` AWS auth provider is used. By default this is empty and the default chain will be used.
     * **required**: false
-    * **default value**: `""`
 * `role_arn`: The AWS role to assume. This can be used, for example, to access a Kinesis stream in a different AWS
 account. This role will be assumed after the default credentials or profile credentials are created. By default
 this is empty and a role will not be assumed.
     * **required**: false
-    * **default value**: `""`
 * `role_session_name`: Session name to use when assuming an IAM role. This is recorded in CloudTrail logs for example.
     * **required**: false
     * **default value**: `"logstash"`

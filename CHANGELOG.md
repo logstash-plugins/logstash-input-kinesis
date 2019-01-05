@@ -1,3 +1,6 @@
+## 2.0.12
+  - Added helpful content from readme to doc file for publishing [#63](https://github.com/logstash-plugins/logstash-input-kinesis/pull/63)
+
 ## 2.0.11
   - Added the ability to assume a role [#40](https://github.com/logstash-plugins/logstash-input-kinesis/pull/40)
 

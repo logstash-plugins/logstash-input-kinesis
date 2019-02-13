@@ -110,9 +110,7 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
     @kcl_config = KCL::KinesisClientLibConfiguration.new(
       @application_name,
       @kinesis_stream_name,
-      kinesis_creds, # credential provider for accessing the kinesis stream
-      creds, # credential provider for creating / accessing the dynamo table
-      creds, # credential provider for cloudwatch metrics
+      kinesis_creds, # credential provider for Kinesis, DynamoDB and Cloudwatch access
       worker_id).
         withInitialPositionInStream(initial_position_in_stream).
         withRegionName(@region)

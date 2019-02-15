@@ -1,3 +1,6 @@
+## 2.1.0
+  - Changed role assumption to also assume role for interactions with dynamodb and cloudwatch [#66](https://github.com/logstash-plugins/logstash-input-kinesis/pull/66)
+
 ## 2.0.11
   - Added the ability to assume a role [#40](https://github.com/logstash-plugins/logstash-input-kinesis/pull/40)
 

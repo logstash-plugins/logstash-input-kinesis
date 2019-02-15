@@ -1,3 +1,6 @@
+## 2.1.1
+  - Added helpful content from readme to doc file for publishing [#63](https://github.com/logstash-plugins/logstash-input-kinesis/pull/63)
+
 ## 2.1.0
   - Changed role assumption to also assume role for interactions with dynamodb and cloudwatch [#66](https://github.com/logstash-plugins/logstash-input-kinesis/pull/66)
 

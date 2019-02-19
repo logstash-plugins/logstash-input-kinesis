@@ -45,7 +45,7 @@ RSpec.describe "LogStash::Inputs::Kinesis::Worker" do
           ),
           record(
             {
-              '@metadata': {
+              '@metadata' => {
                 forwarded: 'record2'
               },
               id: "record2",
@@ -63,7 +63,7 @@ RSpec.describe "LogStash::Inputs::Kinesis::Worker" do
         .withRecords(java.util.Arrays.asList([
           record(
             {
-              '@metadata': {
+              '@metadata' => {
                 forwarded: 'record3',
                 partition_key: 'invalid_key'
               },

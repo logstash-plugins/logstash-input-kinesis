@@ -45,12 +45,34 @@ RSpec.describe "LogStash::Inputs::Kinesis::Worker" do
           ),
           record(
             {
+              '@metadata': {
+                forwarded: 'record2'
+              },
               id: "record2",
               message: "test2"
             },
             '1.441215410868E9',
             'partitionKey2',
             '21269319989652663814458848515492872192'
+          )].to_java)
+        )
+        .withCheckpointer(checkpointer)
+  }
+  let(:collide_metadata_process_input) {
+    KCL_TYPES::ProcessRecordsInput.new()
+        .withRecords(java.util.Arrays.asList([
+          record(
+            {
+              '@metadata': {
+                forwarded: 'record3',
+                partition_key: 'invalid_key'
+              },
+            id: "record3",
+            message: "test3"
+            },
+            '1.441215410869E9',
+            'partitionKey3',
+            '21269319989652663814458848515492872193'
           )].to_java)
         )
         .withCheckpointer(checkpointer)
@@ -80,6 +102,26 @@ RSpec.describe "LogStash::Inputs::Kinesis::Worker" do
         expect(m1.get('@metadata')['partition_key']).to eq('partitionKey1')
         expect(m1.get('@metadata')['sequence_number']).to eq('21269319989652663814458848515492872191')
         expect(m1.get('decorated')).to eq(true)
+      end
+
+      it "decodes and keeps submitted metadata" do
+        worker.processRecords(process_input)
+        expect(queue.size).to eq(2)
+        m1 = queue.pop
+        m2 = queue.pop
+        expect(m1).to be_kind_of(LogStash::Event)
+        expect(m2).to be_kind_of(LogStash::Event)
+        expect(m1.get('@metadata')['forwarded']).to eq(nil)
+        expect(m2.get('@metadata')['forwarded']).to eq('record2')
+      end
+
+      it "decodes and does not allow submitted metadata to overwrite internal keys" do
+        worker.processRecords(collide_metadata_process_input)
+        expect(queue.size).to eq(1)
+        m1 = queue.pop
+        expect(m1).to be_kind_of(LogStash::Event)
+        expect(m1.get('@metadata')['forwarded']).to eq('record3')
+        expect(m1.get('@metadata')['partition_key']).to eq('partitionKey3')
       end
 
       it "checkpoints on interval" do

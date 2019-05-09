@@ -78,6 +78,49 @@ The credentials will need access to the following services:
 * AWS DynamoDB: the client library stores information for worker coordination in DynamoDB (offsets and active worker per partition)
 * AWS CloudWatch: if the metrics are enabled the credentials need CloudWatch update permisions granted.
 
+Required Least-Privilege IAM Policy (no CloudWatch metrics - working as of May 9, 2019):
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "kinesis:DescribeStream",
+                "kinesis:GetShardIterator",
+                "kinesis:GetRecords",
+                "kinesis:ListStreams",
+                "kinesis:ListShards"
+            ],
+            "Resource": [
+                "*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:BatchGetItem",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:CreateTable",
+                "dynamodb:DeleteItem",
+                "dynamodb:DescribeTable",
+                "dynamodb:GetItem",
+                "dynamodb:GetRecords",
+                "dynamodb:ListTables",
+                "dynamodb:PutItem",
+                "dynamodb:Query",
+                "dynamodb:Scan",
+                "dynamodb:UpdateItem",
+                "dynamodb:UpdateTable"
+            ],
+            "Resource": [
+                "*"
+            ]
+        }
+    ]
+}
+```
+
 Look at the [documentation](https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/DefaultAWSCredentialsProviderChain.html) for deeper information on the default chain.
 
 ## Contributing

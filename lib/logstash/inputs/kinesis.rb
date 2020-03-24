@@ -7,7 +7,6 @@ require "logstash/environment"
 require "logstash/namespace"
 
 require 'logstash-input-kinesis_jars'
-require "logstash/inputs/kinesis/version"
 
 
 # Receive events through an AWS Kinesis stream.

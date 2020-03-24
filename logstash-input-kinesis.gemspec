@@ -1,11 +1,9 @@
 # coding: utf-8
-lib = File.expand_path('../lib', __FILE__)
-$LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'logstash/inputs/kinesis/version'
+version = File.read(File.expand_path(File.join(File.dirname(__FILE__), "VERSION"))).strip
 
 Gem::Specification.new do |spec|
   spec.name          = "logstash-input-kinesis"
-  spec.version       = Logstash::Input::Kinesis::VERSION
+  spec.version       = version
   spec.authors       = ["Brian Palmer"]
   spec.email         = ["brian@codekitchen.net"]
   spec.summary       = "Receives events through an AWS Kinesis stream"
@@ -29,6 +27,6 @@ Gem::Specification.new do |spec|
   spec.add_runtime_dependency "logstash-core-plugin-api", ">= 1.60", "<= 2.99"
 
   spec.add_development_dependency 'logstash-devutils'
-  spec.add_development_dependency 'jar-dependencies', '~> 0.3.4'
+  spec.add_development_dependency 'jar-dependencies', '~> 0.4'
   spec.add_development_dependency "logstash-codec-json"
 end

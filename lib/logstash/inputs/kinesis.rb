@@ -74,11 +74,20 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
 
   def register
     # the INFO log level is extremely noisy in KCL
-    kinesis_logger = org.apache.commons.logging::LogFactory.getLog("com.amazonaws.services.kinesis").logger
-    if kinesis_logger.java_kind_of?(java.util.logging::Logger)
-      kinesis_logger.setLevel(java.util.logging::Level::WARNING)
+    lg = org.apache.commons.logging::LogFactory.getLog("com.amazonaws.services.kinesis")
+    if lg.java_kind_of?(org.apache.commons.logging.impl::Jdk14Logger)
+      kinesis_logger = lg.logger
+      if kinesis_logger.java_kind_of?(java.util.logging::Logger)
+        kinesis_logger.setLevel(java.util.logging::Level::WARNING)
+      else
+        kinesis_logger.setLevel(org.apache.log4j::Level::WARN)
+      end
+    elsif lg.java_kind_of?(org.apache.logging.log4jJcl::Log4jLog)
+      logContext = org.apache.logging.log4j::LogManager.getContext(false)
+      config = logContext.getConfiguration()
+      config.getLoggerConfig("com.amazonaws.services.kinesis").setLevel(org.apache.logging.log4j::Level::WARN)
     else
-      kinesis_logger.setLevel(org.apache.log4j::Level::WARN)
+      raise "Can't configure WARN log level for logger wrapper class #{lg.class}"
     end
 
     hostname = Socket.gethostname

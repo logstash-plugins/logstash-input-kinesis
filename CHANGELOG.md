@@ -1,3 +1,6 @@
+## 2.1.2
+  - Fixed logging level setup to use JUL and JCL loggers backend [#87](https://github.com/logstash-plugins/logstash-input-kinesis/issue/87)
+
 ## 2.1.1
   - Added helpful content from readme to doc file for publishing [#63](https://github.com/logstash-plugins/logstash-input-kinesis/pull/63)
 

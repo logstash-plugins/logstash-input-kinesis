@@ -88,3 +88,12 @@ Look at the [documentation](https://docs.aws.amazon.com/AWSJavaSDK/latest/javado
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
 5. Create a new Pull Request
+
+
+## Development
+
+To download all jars: 
+`bundler exec rake install_jars`
+
+To run all specs: 
+`bundler exec rspec`

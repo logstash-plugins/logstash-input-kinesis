@@ -49,7 +49,7 @@ class LogStash::Inputs::Kinesis::Worker
     metadata = build_metadata(record)
     @codec.decode(raw) do |event|
       @decorator.call(event)
-      event.set('@metadata', metadata)
+      event.set('@metadata', event.get('@metadata').merge(metadata))
       @output_queue << event
     end
   rescue => error

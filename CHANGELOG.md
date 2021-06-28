@@ -1,3 +1,9 @@
+## 2.2.0
+- Proxy support for Kinesis, DynamoDB, and CloudWatch clients [#84](https://github.com/logstash-plugins/logstash-input-kinesis/issue/84)
+- Upgrade AWS SDK for WebIdentityTokenCredentialsProvider Support [#82](https://github.com/logstash-plugins/logstash-input-kinesis/issue/82)
+- Don't overwrite existing event metadata [#69](https://github.com/logstash-plugins/logstash-input-kinesis/issue/69)
+- [Docs] additional_settings does not need comma [#75](https://github.com/logstash-plugins/logstash-input-kinesis/issue/75)
+
 ## 2.1.2
   - Fixed logging level setup to use JUL and JCL loggers backend [#87](https://github.com/logstash-plugins/logstash-input-kinesis/issue/87)
 

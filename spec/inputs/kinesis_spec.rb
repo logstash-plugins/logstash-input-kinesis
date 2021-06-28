@@ -75,7 +75,7 @@ RSpec.describe "inputs/kinesis" do
     "region" => "ap-southeast-1",
     "profile" => nil,
     "http_proxy" => "http://user1:pwd1@proxy.example.com:3128/",
-    "no_proxy" => "127.0.0.5",
+    "non_proxy_hosts" => "127.0.0.5",
   }}
 
   # Config hash to test invalid additional_settings where the name is not found

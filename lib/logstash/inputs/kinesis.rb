@@ -73,7 +73,7 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   config :http_proxy, :validate => :string, :default => nil
 
   # Hosts that should be excluded from proxying
-  config :no_proxy, :validate => :string, :default => nil
+  config :non_proxy_hosts, :validate => :string, :default => nil
 
   def initialize(params = {})
     super(params)
@@ -201,6 +201,6 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
     clnt_cfg.set_proxy_password(proxy_uri.password)
     clnt_cfg.set_proxy_host(proxy_uri.host)
     clnt_cfg.set_proxy_port(proxy_uri.port)
-    clnt_cfg.set_non_proxy_hosts(@no_proxy) unless @no_proxy.to_s.empty?
+    clnt_cfg.set_non_proxy_hosts(@non_proxy_hosts) unless @non_proxy_hosts.to_s.empty?
   end
 end

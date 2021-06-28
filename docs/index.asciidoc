@@ -206,7 +206,7 @@ To set the dynamodb read and write capacity values, use these functions:
 
 [source,text]
 ----
-additional_settings => {"initial_lease_table_read_capacity" => 25, "initial_lease_table_write_capacity" => 100}
+additional_settings => {"initial_lease_table_read_capacity" => 25 "initial_lease_table_write_capacity" => 100}
 ----
 
 

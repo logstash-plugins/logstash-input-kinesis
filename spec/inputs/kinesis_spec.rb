@@ -65,6 +65,19 @@ RSpec.describe "inputs/kinesis" do
     }
   }}
 
+  # Config with proxy
+  let(:config_with_proxy) {{
+    "application_name" => "my-processor",
+    "kinesis_stream_name" => "run-specs",
+    "codec" => codec,
+    "metrics" => metrics,
+    "checkpoint_interval_seconds" => 120,
+    "region" => "ap-southeast-1",
+    "profile" => nil,
+    "http_proxy" => "http://user1:pwd1@proxy.example.com:3128/",
+    "no_proxy" => "127.0.0.5",
+  }}
+
   # Config hash to test invalid additional_settings where the name is not found
   let(:config_with_invalid_additional_settings_name_not_found) {{
     "application_name" => "my-processor",
@@ -153,6 +166,16 @@ RSpec.describe "inputs/kinesis" do
     expect(kinesis_with_valid_additional_settings.kcl_config.kinesisEndpoint).to eq("http://localhost")
   end
 
+  subject!(:kinesis_with_proxy) { LogStash::Inputs::Kinesis.new(config_with_proxy) }
+
+  it "configures the KCL with proxy settings" do
+    kinesis_with_proxy.register
+    clnt_config = kinesis_with_proxy.kcl_config.kinesis_client_configuration
+    expect(clnt_config.get_proxy_username).to eq("user1")
+    expect(clnt_config.get_proxy_host).to eq("proxy.example.com")
+    expect(clnt_config.get_proxy_port).to eq(3128)
+    expect(clnt_config.get_non_proxy_hosts).to eq("127.0.0.5")
+  end
 
   subject!(:kinesis_with_invalid_additional_settings_name_not_found) { LogStash::Inputs::Kinesis.new(config_with_invalid_additional_settings_name_not_found) }
 

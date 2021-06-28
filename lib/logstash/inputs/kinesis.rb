@@ -1,6 +1,7 @@
 # encoding: utf-8
 
 require "socket"
+require "uri"
 require "logstash/inputs/base"
 require "logstash/errors"
 require "logstash/environment"
@@ -68,6 +69,12 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   # Any additional arbitrary kcl options configurable in the KinesisClientLibConfiguration
   config :additional_settings, :validate => :hash, :default => {}
 
+  # Proxy for Kinesis, DynamoDB, and CloudWatch (if enabled)
+  config :http_proxy, :validate => :string, :default => nil
+
+  # Hosts that should be excluded from proxying
+  config :no_proxy, :validate => :string, :default => nil
+
   def initialize(params = {})
     super(params)
   end
@@ -89,6 +96,8 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
     else
       raise "Can't configure WARN log level for logger wrapper class #{lg.class}"
     end
+
+    @logger.info("Registering logstash-input-kinesis")
 
     hostname = Socket.gethostname
     uuid = java.util::UUID.randomUUID.to_s
@@ -129,6 +138,19 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
           fn = "with_#{key}"
           @kcl_config.send(fn, value)
       end
+
+      unless @http_proxy.to_s.empty?
+        proxy_uri = URI(@http_proxy)
+        @logger.info("Using proxy #{proxy_uri.scheme}://#{proxy_uri.user}:*****@#{proxy_uri.host}:#{proxy_uri.port}")
+        clnt_cfg = @kcl_config.get_kinesis_client_configuration
+        set_client_proxy_settings(clnt_cfg, proxy_uri)
+        clnt_cfg = @kcl_config.get_dynamo_db_client_configuration
+        set_client_proxy_settings(clnt_cfg, proxy_uri)
+        clnt_cfg = @kcl_config.get_cloud_watch_client_configuration
+        set_client_proxy_settings(clnt_cfg, proxy_uri)
+      end
+
+      @logger.info("Registered logstash-input-kinesis")
   end
 
   def run(output_queue)
@@ -164,5 +186,21 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
     when 'cloudwatch'
       nil # default in the underlying library
     end
+  end
+
+  def set_client_proxy_settings(clnt_cfg, proxy_uri)
+    protocol = nil
+    case proxy_uri.scheme
+    when "http"
+      protocol = com.amazonaws.Protocol::HTTP
+    when "https"
+      protocol = com.amazonaws.Protocol::HTTPS
+    end
+    clnt_cfg.set_proxy_protocol(protocol) if protocol
+    clnt_cfg.set_proxy_username(proxy_uri.user)
+    clnt_cfg.set_proxy_password(proxy_uri.password)
+    clnt_cfg.set_proxy_host(proxy_uri.host)
+    clnt_cfg.set_proxy_port(proxy_uri.port)
+    clnt_cfg.set_non_proxy_hosts(@no_proxy) unless @no_proxy.to_s.empty?
   end
 end

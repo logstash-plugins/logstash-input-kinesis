@@ -1,5 +1,5 @@
 ## 2.2.1
-  - Fix: Remove usage of `java_kind_of?` to support jruby-9.3.4.0 [#85](https://github.com/logstash-plugins/logstash-input-kinesis/pulls/85)
+  - Fix: Remove usage of `java_kind_of?` to support jruby-9.3.4.0 [#91](https://github.com/logstash-plugins/logstash-input-kinesis/pulls/91)
 
 ## 2.2.0
 - Proxy support for Kinesis, DynamoDB, and CloudWatch clients [#84](https://github.com/logstash-plugins/logstash-input-kinesis/issues/84)

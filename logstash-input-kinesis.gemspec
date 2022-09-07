@@ -20,7 +20,7 @@ Gem::Specification.new do |spec|
 
   spec.platform      = 'java'
 
-  spec.requirements << "jar 'com.amazonaws:amazon-kinesis-client', '1.13.3'"
+  spec.requirements << "jar 'com.amazonaws:amazon-kinesis-client', '1.14.8'"
   spec.requirements << "jar 'com.amazonaws:aws-java-sdk-core', '1.12.290'"
   spec.requirements << "jar 'com.amazonaws:aws-java-sdk-sts', '1.12.290'"
 

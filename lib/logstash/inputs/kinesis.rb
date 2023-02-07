@@ -25,6 +25,8 @@ require 'logstash-input-kinesis_jars'
 # The library can optionally also send worker statistics to CloudWatch.
 class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   KCL = com.amazonaws.services.kinesis.clientlibrary.lib.worker
+  DDB = com.amazonaws.services.dynamodbv2
+  DDB_BILLING_MODE = com.amazonaws.services.dynamodbv2.model.BillingMode
   KCL_PROCESSOR_FACTORY_CLASS = com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessorFactory
   require "logstash/inputs/kinesis/worker"
 
@@ -135,8 +137,13 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
       # Call arbitrary "withX()" functions
       # snake_case => withCamelCase happens automatically
       @additional_settings.each do |key, value|
-          fn = "with_#{key}"
-          @kcl_config.send(fn, value)
+        fn = "with_#{key}"
+        arg = if key == "billing_mode"
+          DDB_BILLING_MODE::fromValue(value)
+        else
+          value
+        end
+        @kcl_config.send(fn, arg)
       end
 
       unless @http_proxy.to_s.empty?

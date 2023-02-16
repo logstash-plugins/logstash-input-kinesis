@@ -70,7 +70,7 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   config :additional_settings, :validate => :hash, :default => {}
 
   # Proxy for Kinesis, DynamoDB, and CloudWatch (if enabled)
-  config :http_proxy, :validate => :string, :default => nil
+  config :http_proxy, :validate => :password, :default => nil
 
   # Hosts that should be excluded from proxying
   config :non_proxy_hosts, :validate => :string, :default => nil
@@ -139,8 +139,8 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
           @kcl_config.send(fn, value)
       end
 
-      unless @http_proxy.to_s.empty?
-        proxy_uri = URI(@http_proxy)
+      unless @http_proxy.value.empty?
+        proxy_uri = URI(@http_proxy.value)
         @logger.info("Using proxy #{proxy_uri.scheme}://#{proxy_uri.user}:*****@#{proxy_uri.host}:#{proxy_uri.port}")
         clnt_cfg = @kcl_config.get_kinesis_client_configuration
         set_client_proxy_settings(clnt_cfg, proxy_uri)

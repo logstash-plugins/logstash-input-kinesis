@@ -1,3 +1,6 @@
+## 2.2.2
+  - Change `http_proxy` config type to `Password` for better protection from leaks in debug logs [#92](https://github.com/logstash-plugins/logstash-input-kinesis/pull/92)
+
 ## 2.2.1
   - Fix: Remove usage of `java_kind_of?` to support jruby-9.3.4.0 [#91](https://github.com/logstash-plugins/logstash-input-kinesis/pull/91)
 

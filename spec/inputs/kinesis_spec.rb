@@ -74,7 +74,7 @@ RSpec.describe "inputs/kinesis" do
     "checkpoint_interval_seconds" => 120,
     "region" => "ap-southeast-1",
     "profile" => nil,
-    "http_proxy" => "http://user1:pwd1@proxy.example.com:3128/",
+    "http_proxy" => ::LogStash::Util::Password.new("http://user1:pwd1@proxy.example.com:3128/"),
     "non_proxy_hosts" => "127.0.0.5",
   }}
 

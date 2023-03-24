@@ -112,8 +112,12 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
     end
 
     # If a role ARN is set then assume the role as a new layer over the credentials already created
+    # In GovCloud we need to manually configure the STS endpoint
     unless @role_arn.nil?
-      kinesis_creds = com.amazonaws.auth::STSAssumeRoleSessionCredentialsProvider.new(creds, @role_arn, @role_session_name)
+      sts = com.amazonaws.services.securitytoken::AWSSecurityTokenServiceClient.new(creds)
+      sts.setEndpoint("sts.us-gov-west-1.amazonaws.com") if @region.start_with?("us-gov")
+      builder = com.amazonaws.auth::STSAssumeRoleSessionCredentialsProvider::Builder.new(@role_arn, @role_session_name).withStsClient(sts)
+      kinesis_creds = builder.build()
     else
       kinesis_creds = creds
     end

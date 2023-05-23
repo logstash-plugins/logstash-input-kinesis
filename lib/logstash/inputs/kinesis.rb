@@ -139,7 +139,7 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
           @kcl_config.send(fn, value)
       end
 
-      unless @http_proxy.value.empty?
+      unless @http_proxy.nil? && @http_proxy.value.empty?
         proxy_uri = URI(@http_proxy.value)
         @logger.info("Using proxy #{proxy_uri.scheme}://#{proxy_uri.user}:*****@#{proxy_uri.host}:#{proxy_uri.port}")
         clnt_cfg = @kcl_config.get_kinesis_client_configuration

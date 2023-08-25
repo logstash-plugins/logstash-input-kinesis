@@ -1,3 +1,6 @@
+## 2.3.0
+  - Updated Kinesis client to `1.15.0` [#n](https://github.com/logstash-plugins/logstash-input-kinesis/pull/n)
+
 ## 2.2.2
   - Change `http_proxy` config type to `password` for better protection from leaks in debug logs [#101](https://github.com/logstash-plugins/logstash-input-kinesis/pull/101)
 

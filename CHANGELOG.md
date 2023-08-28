@@ -1,3 +1,6 @@
+## 2.3.0
+  - Updated Kinesis client to `1.15.0`, now requires Logstash `>=8.9.0` [#102](https://github.com/logstash-plugins/logstash-input-kinesis/pull/102)
+
 ## 2.2.2
   - Change `http_proxy` config type to `password` for better protection from leaks in debug logs [#101](https://github.com/logstash-plugins/logstash-input-kinesis/pull/101)
 

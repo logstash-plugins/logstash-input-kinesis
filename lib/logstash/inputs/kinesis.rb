@@ -66,7 +66,10 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   # Select initial_position_in_stream. Accepts TRIM_HORIZON or LATEST
   config :initial_position_in_stream, :validate => ["TRIM_HORIZON", "LATEST"], :default => "TRIM_HORIZON"
 
-  # Any additional arbitrary kcl options configurable in the ConfigsBuilder
+  # Any additional KCL options. Settings are applied to the appropriate
+  # sub-config object (CheckpointConfig, CoordinatorConfig, LeaseManagementConfig,
+  # LifecycleConfig, MetricsConfig, ProcessorConfig, or RetrievalConfig).
+  # Use camelCase or snake_case keys matching the Java method names.
   config :additional_settings, :validate => :hash, :default => {}
 
   # Kinesis endpoint override (for LocalStack or custom endpoints)
@@ -213,14 +216,42 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
       worker_factory_lambda()
     )
 
-    # Apply additional settings
-    @additional_settings.each do |key, value|
-      fn = "#{key}"
-      begin
-        configsBuilder.send(fn, value)
-      rescue NoMethodError => e
-        @logger.warn("Invalid additional_settings key: #{key}", :error => e.message)
-        raise e
+    # Apply additional settings to KCL sub-configuration objects.
+    # In KCL v2, settings live on sub-config objects (e.g., leaseManagementConfig,
+    # retrievalConfig) rather than on ConfigsBuilder directly.
+    # We try each sub-config to find which one has the matching method.
+    # Both camelCase and snake_case keys are supported (JRuby handles conversion).
+    unless @additional_settings.empty?
+      sub_configs = [
+        configsBuilder,
+        configsBuilder.checkpointConfig(),
+        configsBuilder.coordinatorConfig(),
+        configsBuilder.leaseManagementConfig(),
+        configsBuilder.lifecycleConfig(),
+        configsBuilder.metricsConfig(),
+        configsBuilder.processorConfig(),
+        configsBuilder.retrievalConfig(),
+      ]
+
+      @additional_settings.each do |key, value|
+        applied = false
+        sub_configs.each do |cfg|
+          begin
+            cfg.send(key, value)
+            @logger.info("Applied additional setting", :key => key, :config => cfg.java_class.simple_name)
+            applied = true
+            break
+          rescue NoMethodError
+            next
+          end
+        end
+
+        unless applied
+          raise NoMethodError, "No matching KCL configuration property found for '#{key}'. " \
+            "Settings must match a method on one of: ConfigsBuilder, CheckpointConfig, " \
+            "CoordinatorConfig, LeaseManagementConfig, LifecycleConfig, MetricsConfig, " \
+            "ProcessorConfig, or RetrievalConfig."
+        end
       end
     end
 

@@ -210,21 +210,21 @@ Session name to use when assuming an IAM role. This is recorded in CloudTrail lo
 * Value type is <<string,string>>
 * There is no default value for this setting 
 
-The KCL provides several configuration options which can be set in
-https://github.com/awslabs/amazon-kinesis-client/blob/master/amazon-kinesis-client-multilang/src/main/java/software/amazon/kinesis/coordinator/KinesisClientLibConfiguration.java[KinesisClientLibConfiguration].
-These options are configured via various function calls that all begin with
-`with`. Some of these functions take complex types, which are not supported.
-However, you may invoke any one of the `withX()` functions that take a primitive
-by providing key-value pairs in `snake_case`. 
+KCL v2 splits configuration across several sub-config objects:
+`CheckpointConfig`, `CoordinatorConfig`, `LeaseManagementConfig`,
+`LifecycleConfig`, `MetricsConfig`, `ProcessorConfig`, and `RetrievalConfig`.
+You can set any primitive property on these objects by providing key-value pairs
+using the Java method name (camelCase) or JRuby-style snake_case.
+The plugin automatically finds the correct sub-config object for each setting.
 
-Example: 
+Example:
 
-To set the dynamodb read and write capacity values, use these functions: 
-`withInitialLeaseTableReadCapacity` and `withInitialLeaseTableWriteCapacity`. 
+To set the DynamoDB lease table read and write capacity values
+(properties on `LeaseManagementConfig`):
 
 [source,text]
 ----
-additional_settings => {"initial_lease_table_read_capacity" => 25 "initial_lease_table_write_capacity" => 100}
+additional_settings => {"initialLeaseTableReadCapacity" => 25, "initialLeaseTableWriteCapacity" => 100}
 ----
 
 

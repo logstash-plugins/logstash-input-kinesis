@@ -47,7 +47,7 @@ RSpec.describe "inputs/kinesis" do
     "initial_position_in_stream" => "LATEST"
   }}
 
-  # Config hash to test valid additional_settings
+  # Config hash to test valid additional_settings on ConfigsBuilder
   let(:config_with_valid_additional_settings) {{
     "application_name" => "my-processor",
     "kinesis_stream_name" => "run-specs",
@@ -58,6 +58,21 @@ RSpec.describe "inputs/kinesis" do
     "profile" => nil,
     "additional_settings" => {
         "tableName" => "custom-table-name"
+    }
+  }}
+
+  # Config hash to test valid additional_settings on sub-config objects
+  let(:config_with_sub_config_additional_settings) {{
+    "application_name" => "my-processor",
+    "kinesis_stream_name" => "run-specs",
+    "codec" => codec,
+    "metrics" => metrics,
+    "checkpoint_interval_seconds" => 120,
+    "region" => "ap-southeast-1",
+    "profile" => nil,
+    "additional_settings" => {
+        "initialLeaseTableReadCapacity" => 25,
+        "initialLeaseTableWriteCapacity" => 100
     }
   }}
 
@@ -125,8 +140,14 @@ RSpec.describe "inputs/kinesis" do
 
   subject!(:kinesis_with_valid_additional_settings) { LogStash::Inputs::Kinesis.new(config_with_valid_additional_settings) }
 
-  it "applies additional settings" do
+  it "applies additional settings on ConfigsBuilder" do
     expect { kinesis_with_valid_additional_settings.register }.to_not raise_error
+  end
+
+  subject!(:kinesis_with_sub_config_additional_settings) { LogStash::Inputs::Kinesis.new(config_with_sub_config_additional_settings) }
+
+  it "applies additional settings on sub-config objects" do
+    expect { kinesis_with_sub_config_additional_settings.register }.to_not raise_error
   end
 
   subject!(:kinesis_with_proxy) { LogStash::Inputs::Kinesis.new(config_with_proxy) }

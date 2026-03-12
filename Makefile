@@ -1,4 +1,4 @@
-.PHONY: help test clean dist-clean setup all integration gem docker
+.PHONY: help test clean dist-clean setup all integration integration-clean gem docker
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -35,6 +35,10 @@ docker: ## Build Docker image with the plugin installed
 
 integration: ## Run integration tests with docker-compose, localstack, and http mock
 	@./integration-test/run-test.sh
+
+integration-clean: ## Remove Docker images and volumes used by integration tests
+	@echo "Cleaning integration test resources..."
+	@docker compose down -v --rmi local 2>/dev/null || true
 
 clean: ## Clean vendor directories and installed dependencies
 	@echo "Cleaning vendor directories..."

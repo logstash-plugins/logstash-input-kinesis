@@ -1,3 +1,6 @@
+## Unreleased
+  - Removed `jar-dependencies` dependency [#106](https://github.com/logstash-plugins/logstash-input-kinesis/pull/106)
+
 ## 2.3.0
   - Updated Kinesis client to `1.15.0`, now requires Logstash `>=8.9.0` [#102](https://github.com/logstash-plugins/logstash-input-kinesis/pull/102)
 

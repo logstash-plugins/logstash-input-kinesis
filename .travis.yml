@@ -4,6 +4,5 @@ import:
 
 env:
   jobs:
-    # lock on version 8.x because use of Jackson data bind 2.15.2 available from 8.9.0
-    - ELASTIC_STACK_VERSION=8.x DOCKER_ENV=dockerjdk17.env
-    - SNAPSHOT=true ELASTIC_STACK_VERSION=8.x DOCKER_ENV=dockerjdk17.env
+    - ELASTIC_STACK_VERSION=8.current DOCKER_ENV=dockerjdk17.env
+    - SNAPSHOT=true ELASTIC_STACK_VERSION=8.current DOCKER_ENV=dockerjdk17.env

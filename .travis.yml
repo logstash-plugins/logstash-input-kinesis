@@ -4,5 +4,5 @@ import:
 
 env:
   jobs:
-    - ELASTIC_STACK_VERSION=8.current DOCKER_ENV=dockerjdk17.env
-    - SNAPSHOT=true ELASTIC_STACK_VERSION=8.current DOCKER_ENV=dockerjdk17.env
+    - ELASTIC_STACK_VERSION=8.current DOCKER_ENV=dockerjdk21.env
+    - SNAPSHOT=true ELASTIC_STACK_VERSION=8.current DOCKER_ENV=dockerjdk21.env

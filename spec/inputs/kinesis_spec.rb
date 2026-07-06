@@ -256,11 +256,21 @@ RSpec.describe "inputs/kinesis" do
 
   it "configures the clients with proxy settings" do
     kinesis_with_proxy.register
-    proxy_config = kinesis_with_proxy.send(:build_proxy_configuration)
+    proxy_uri = kinesis_with_proxy.send(:extract_proxy_uri)
+
+    # Netty (async) proxy configuration for Kinesis/DynamoDB/CloudWatch.
+    proxy_config = kinesis_with_proxy.send(:build_proxy_configuration, proxy_uri)
     expect(proxy_config.username).to eq("user1")
     expect(proxy_config.host).to eq("proxy.example.com")
     expect(proxy_config.port).to eq(3128)
     expect(proxy_config.nonProxyHosts.to_a).to eq(["127.0.0.5"])
+
+    # Apache (sync) proxy configuration for the STS client used by role assumption.
+    apache_proxy = kinesis_with_proxy.send(:build_apache_proxy_configuration, proxy_uri)
+    expect(apache_proxy.username).to eq("user1")
+    expect(apache_proxy.host).to eq("proxy.example.com")
+    expect(apache_proxy.port).to eq(3128)
+    expect(apache_proxy.nonProxyHosts.to_a).to eq(["127.0.0.5"])
   end
 
   subject!(:kinesis_with_invalid_additional_settings_name_not_found) { LogStash::Inputs::Kinesis.new(config_with_invalid_additional_settings_name_not_found) }
@@ -271,8 +281,9 @@ RSpec.describe "inputs/kinesis" do
 
   subject!(:kinesis_with_invalid_additional_settings_wrong_type) { LogStash::Inputs::Kinesis.new(config_with_invalid_additional_settings_wrong_type) }
 
-  it "raises an error for invalid configuration values such as the wrong type" do
-    expect{ kinesis_with_invalid_additional_settings_wrong_type.register }.to raise_error(StandardError)
+  it "raises a descriptive error for invalid configuration values such as the wrong type" do
+    expect{ kinesis_with_invalid_additional_settings_wrong_type.register }
+      .to raise_error(/Invalid additional_settings value for 'initial_lease_table_read_capacity'/)
   end
 
   context "#run" do

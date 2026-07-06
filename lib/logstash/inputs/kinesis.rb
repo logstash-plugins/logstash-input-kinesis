@@ -109,8 +109,11 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
     @worker_id = "#{hostname}:#{uuid}"
 
     region = AWS.regions::Region.of(@region)
-    @aws_credentials_provider = build_credentials_provider(region)
-    proxy_configuration = build_proxy_configuration
+    # Parse the proxy once (and log it once) so both the async service clients and
+    # the synchronous STS client used for `role_arn` assumption honor it.
+    proxy_uri = extract_proxy_uri
+    @aws_credentials_provider = build_credentials_provider(region, proxy_uri)
+    proxy_configuration = build_proxy_configuration(proxy_uri)
 
     # Backward compatibility: KCL 1.x exposed `kinesis_endpoint`/`dynamodb_endpoint`
     # through additional_settings. In the AWS SDK v2 these are client-level endpoint
@@ -190,7 +193,7 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
 
   protected
 
-  def build_credentials_provider(region)
+  def build_credentials_provider(region, proxy_uri = nil)
     base = if @profile.nil?
       AWS.auth.credentials::DefaultCredentialsProvider.create
     else
@@ -200,11 +203,19 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
     return base if @role_arn.nil?
 
     # Assume the role as a new layer over the credentials already created, used
-    # by all of Kinesis, DynamoDB and CloudWatch.
-    sts_client = AWS.services.sts::StsClient.builder
+    # by all of Kinesis, DynamoDB and CloudWatch. StsClient is a synchronous
+    # client, so its proxy is configured on the Apache HTTP client (the async
+    # Netty proxy configuration does not apply here).
+    sts_builder = AWS.services.sts::StsClient.builder
       .region(region)
       .credentialsProvider(base)
-      .build
+    apache_proxy = build_apache_proxy_configuration(proxy_uri)
+    if apache_proxy
+      sts_builder.httpClientBuilder(
+        AWS.http.apache::ApacheHttpClient.builder.proxyConfiguration(apache_proxy)
+      )
+    end
+    sts_client = sts_builder.build
     assume_role_request = AWS.services.sts.model::AssumeRoleRequest.builder
       .roleArn(@role_arn)
       .roleSessionName(@role_session_name)
@@ -228,23 +239,48 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
     builder.build
   end
 
-  def build_proxy_configuration
+  def extract_proxy_uri
     return nil unless @http_proxy && !@http_proxy.value.to_s.strip.empty?
 
     proxy_uri = URI(@http_proxy.value)
     @logger.info("Using proxy #{proxy_uri.scheme}://#{proxy_uri.user}:*****@#{proxy_uri.host}:#{proxy_uri.port}")
+    proxy_uri
+  end
+
+  # Netty (async) proxy configuration for the Kinesis, DynamoDB and CloudWatch clients.
+  def build_proxy_configuration(proxy_uri)
+    return nil if proxy_uri.nil?
+
     builder = AWS.http.nio.netty::ProxyConfiguration.builder
       .scheme(proxy_uri.scheme)
       .host(proxy_uri.host)
       .port(proxy_uri.port)
     builder.username(proxy_uri.user) if proxy_uri.user
     builder.password(proxy_uri.password) if proxy_uri.password
-    unless @non_proxy_hosts.to_s.empty?
-      hosts = java.util::HashSet.new
-      @non_proxy_hosts.split("|").each { |host| hosts.add(host) }
-      builder.nonProxyHosts(hosts)
-    end
+    hosts = non_proxy_hosts_set
+    builder.nonProxyHosts(hosts) if hosts
     builder.build
+  end
+
+  # Apache (sync) proxy configuration for the STS client used by role assumption.
+  def build_apache_proxy_configuration(proxy_uri)
+    return nil if proxy_uri.nil?
+
+    builder = AWS.http.apache::ProxyConfiguration.builder
+      .endpoint(java.net::URI.create("#{proxy_uri.scheme}://#{proxy_uri.host}:#{proxy_uri.port}"))
+    builder.username(proxy_uri.user) if proxy_uri.user
+    builder.password(proxy_uri.password) if proxy_uri.password
+    hosts = non_proxy_hosts_set
+    builder.nonProxyHosts(hosts) if hosts
+    builder.build
+  end
+
+  def non_proxy_hosts_set
+    return nil if @non_proxy_hosts.to_s.empty?
+
+    hosts = java.util::HashSet.new
+    @non_proxy_hosts.split("|").each { |host| hosts.add(host) }
+    hosts
   end
 
   def initial_position_in_stream_extended
@@ -282,11 +318,18 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   # historical scalar `additional_settings` values keep working.
   def apply_setting(target, key, value)
     target.public_send(key, value)
-  rescue NameError, TypeError, ArgumentError
+  rescue NameError, TypeError, ArgumentError => original_error
     # JRuby raises NameError ("no method '...' for arguments (...)") when the setter
     # exists but no overload accepts the raw value's type, which is the case for the
-    # Optional-typed KCL 2.x setters. Retry with the value wrapped in an Optional.
-    target.public_send(key, java.util::Optional.ofNullable(value))
+    # Optional-typed KCL 2.x setters. Retry once wrapped in an Optional; if that also
+    # fails the value is genuinely invalid, so surface the original error (which names
+    # the setter) together with the offending key rather than the misleading Optional
+    # overload error.
+    begin
+      target.public_send(key, java.util::Optional.ofNullable(value))
+    rescue NameError, TypeError, ArgumentError
+      raise original_error.class, "Invalid additional_settings value for '#{key}': #{original_error.message}"
+    end
   end
 
   def quiet_kcl_logging

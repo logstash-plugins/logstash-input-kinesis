@@ -79,7 +79,7 @@ The credentials need access to the following services:
 * AWS CloudWatch. If the metrics are enabled the credentials need CloudWatch update permissions granted.
 
 See the
-https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/DefaultAWSCredentialsProviderChain.html[AWS documentation]
+https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials-chain.html[AWS documentation]
 for more information on the default chain.
 
 [id="plugins-{type}s-{plugin}-options"]

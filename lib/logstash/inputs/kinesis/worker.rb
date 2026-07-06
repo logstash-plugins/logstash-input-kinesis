@@ -11,7 +11,7 @@ class LogStash::Inputs::Kinesis::Worker
   )
 
   def initialize(*args)
-    # nasty hack, because this is the name of a method on IRecordProcessor, but also ruby's constructor
+    # nasty hack, because this is the name of a method on ShardRecordProcessor, but also ruby's constructor
     if !@constructed
       @codec, @output_queue, @decorator, @checkpoint_interval, @logger = args
       @next_checkpoint = Time.now - 600

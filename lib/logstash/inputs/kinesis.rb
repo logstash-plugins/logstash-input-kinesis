@@ -12,7 +12,7 @@ require 'logstash-input-kinesis_jars'
 
 # Receive events through an AWS Kinesis stream.
 #
-# This input plugin uses the Java Kinesis Client Library underneath, so the
+# This input plugin uses the Java Kinesis Client Library (KCL) underneath, so the
 # documentation at https://github.com/awslabs/amazon-kinesis-client will be
 # useful.
 #
@@ -24,15 +24,30 @@ require 'logstash-input-kinesis_jars'
 #
 # The library can optionally also send worker statistics to CloudWatch.
 class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
-  KCL = com.amazonaws.services.kinesis.clientlibrary.lib.worker
-  KCL_PROCESSOR_FACTORY_CLASS = com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessorFactory
   require "logstash/inputs/kinesis/worker"
 
   config_name 'kinesis'
 
+  # AWS SDK for Java v2 and KCL 2.x are published under the `software.amazon`
+  # package root. Unlike `com`/`org`/`java`, JRuby does not expose `software` as
+  # a top-level constant, so these packages must be reached through `Java::`.
+  AWS = Java::software.amazon.awssdk
+  KCL = Java::software.amazon.kinesis
+
   attr_reader(
-    :kcl_config,
-    :kcl_worker,
+    :aws_credentials_provider,
+    :kinesis_client,
+    :dynamo_db_client,
+    :cloud_watch_client,
+    :checkpoint_config,
+    :coordinator_config,
+    :lease_management_config,
+    :lifecycle_config,
+    :metrics_config,
+    :processor_config,
+    :retrieval_config,
+    :polling_config,
+    :kcl_scheduler,
   )
 
   # The application name used for the dynamodb coordination table. Must be
@@ -66,13 +81,16 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   # Select initial_position_in_stream. Accepts TRIM_HORIZON or LATEST
   config :initial_position_in_stream, :validate => ["TRIM_HORIZON", "LATEST"], :default => "TRIM_HORIZON"
 
-  # Any additional arbitrary kcl options configurable in the KinesisClientLibConfiguration
+  # Any additional arbitrary KCL options. Each key is matched against the setter
+  # methods exposed by the KCL 2.x configuration objects (CheckpointConfig,
+  # CoordinatorConfig, LeaseManagementConfig, LifecycleConfig, MetricsConfig,
+  # ProcessorConfig, RetrievalConfig) and applied to whichever one accepts it.
   config :additional_settings, :validate => :hash, :default => {}
 
   # Proxy for Kinesis, DynamoDB, and CloudWatch (if enabled)
   config :http_proxy, :validate => :password, :default => nil
 
-  # Hosts that should be excluded from proxying
+  # Hosts that should be excluded from proxying, separated by the "|" (pipe) character.
   config :non_proxy_hosts, :validate => :string, :default => nil
 
   def initialize(params = {})
@@ -80,127 +98,203 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   end
 
   def register
-    # the INFO log level is extremely noisy in KCL
-    lg = org.apache.commons.logging::LogFactory.getLog("com.amazonaws.services.kinesis")
-    if lg.kind_of?(org.apache.commons.logging.impl::Jdk14Logger)
-      kinesis_logger = lg.logger
-      if kinesis_logger.kind_of?(java.util.logging::Logger)
-        kinesis_logger.setLevel(java.util.logging::Level::WARNING)
-      else
-        kinesis_logger.setLevel(org.apache.log4j::Level::WARN)
-      end
-    elsif lg.kind_of?(org.apache.logging.log4jJcl::Log4jLog)
-      logContext = org.apache.logging.log4j::LogManager.getContext(false)
-      config = logContext.getConfiguration()
-      config.getLoggerConfig("com.amazonaws.services.kinesis").setLevel(org.apache.logging.log4j::Level::WARN)
-    else
-      raise "Can't configure WARN log level for logger wrapper class #{lg.class}"
-    end
+    # the INFO log level is extremely noisy in KCL; the library moved to the
+    # software.amazon.* namespaces and logs through SLF4J (Log4j2 in Logstash).
+    quiet_kcl_logging
 
     @logger.info("Registering logstash-input-kinesis")
 
     hostname = Socket.gethostname
     uuid = java.util::UUID.randomUUID.to_s
-    worker_id = "#{hostname}:#{uuid}"
+    @worker_id = "#{hostname}:#{uuid}"
 
-    # If the AWS profile is set, use the profile credentials provider.
-    # Otherwise fall back to the default chain.
-    unless @profile.nil?
-      creds = com.amazonaws.auth.profile::ProfileCredentialsProvider.new(@profile)
-    else
-      creds = com.amazonaws.auth::DefaultAWSCredentialsProviderChain.new
-    end
+    region = AWS.regions::Region.of(@region)
+    @aws_credentials_provider = build_credentials_provider(region)
+    proxy_configuration = build_proxy_configuration
 
-    # If a role ARN is set then assume the role as a new layer over the credentials already created
-    unless @role_arn.nil?
-      kinesis_creds = com.amazonaws.auth::STSAssumeRoleSessionCredentialsProvider.new(creds, @role_arn, @role_session_name)
-    else
-      kinesis_creds = creds
-    end
+    # Backward compatibility: KCL 1.x exposed `kinesis_endpoint`/`dynamodb_endpoint`
+    # through additional_settings. In the AWS SDK v2 these are client-level endpoint
+    # overrides, so consume them here before the remaining settings are applied.
+    kinesis_endpoint = @additional_settings.delete("kinesis_endpoint")
+    dynamo_db_endpoint = @additional_settings.delete("dynamodb_endpoint") || @additional_settings.delete("dynamo_db_endpoint")
 
-    initial_position_in_stream = if @initial_position_in_stream == "TRIM_HORIZON"
-      KCL::InitialPositionInStream::TRIM_HORIZON
-    else
-      KCL::InitialPositionInStream::LATEST
-    end
+    @kinesis_client = build_async_client(AWS.services.kinesis::KinesisAsyncClient, region, proxy_configuration, kinesis_endpoint)
+    @dynamo_db_client = build_async_client(AWS.services.dynamodb::DynamoDbAsyncClient, region, proxy_configuration, dynamo_db_endpoint)
+    @cloud_watch_client = build_async_client(AWS.services.cloudwatch::CloudWatchAsyncClient, region, proxy_configuration)
 
-    @kcl_config = KCL::KinesisClientLibConfiguration.new(
-      @application_name,
+    configs_builder = KCL.common::ConfigsBuilder.new(
       @kinesis_stream_name,
-      kinesis_creds, # credential provider for Kinesis, DynamoDB and Cloudwatch access
-      worker_id).
-        withInitialPositionInStream(initial_position_in_stream).
-        withRegionName(@region)
+      @application_name,
+      @kinesis_client,
+      @dynamo_db_client,
+      @cloud_watch_client,
+      @worker_id,
+      worker_factory
+    )
 
-      # Call arbitrary "withX()" functions
-      # snake_case => withCamelCase happens automatically
-      @additional_settings.each do |key, value|
-          fn = "with_#{key}"
-          @kcl_config.send(fn, value)
-      end
+    # In KCL 2.x the single KinesisClientLibConfiguration is split across six
+    # configuration objects. Capture each once so customizations and the
+    # Scheduler reference the same instances.
+    @checkpoint_config = configs_builder.checkpointConfig
+    @coordinator_config = configs_builder.coordinatorConfig
+    @lease_management_config = configs_builder.leaseManagementConfig
+    @lifecycle_config = configs_builder.lifecycleConfig
+    @metrics_config = configs_builder.metricsConfig
+    @processor_config = configs_builder.processorConfig
+    @retrieval_config = configs_builder.retrievalConfig
 
-    if @http_proxy && !@http_proxy.value.to_s.strip.empty?
-        proxy_uri = URI(@http_proxy.value)
-        @logger.info("Using proxy #{proxy_uri.scheme}://#{proxy_uri.user}:*****@#{proxy_uri.host}:#{proxy_uri.port}")
-        clnt_cfg = @kcl_config.get_kinesis_client_configuration
-        set_client_proxy_settings(clnt_cfg, proxy_uri)
-        clnt_cfg = @kcl_config.get_dynamo_db_client_configuration
-        set_client_proxy_settings(clnt_cfg, proxy_uri)
-        clnt_cfg = @kcl_config.get_cloud_watch_client_configuration
-        set_client_proxy_settings(clnt_cfg, proxy_uri)
-      end
+    initial_position = initial_position_in_stream_extended
+    @retrieval_config.initialPositionInStreamExtended(initial_position)
+    # Preserve the historical shared-throughput (polling) consumer behaviour
+    # instead of the KCL 2.x default of enhanced fan-out.
+    @polling_config = KCL.retrieval.polling::PollingConfig.new(@kinesis_stream_name, @kinesis_client)
+    @retrieval_config.retrievalSpecificConfig(@polling_config)
+    @lease_management_config.initialPositionInStream(initial_position)
 
-      @logger.info("Registered logstash-input-kinesis")
+    # KCL 2.x replaces the NullMetricsFactory with a metrics level; NONE disables
+    # CloudWatch publishing entirely.
+    if @metrics.nil?
+      @metrics_config.metricsLevel(KCL.metrics::MetricsLevel::NONE)
+    end
+
+    apply_additional_settings
+
+    @logger.info("Registered logstash-input-kinesis")
   end
 
   def run(output_queue)
-    @kcl_worker = kcl_builder(output_queue).build
-    @kcl_worker.run
+    @output_queue = output_queue
+    @kcl_scheduler = build_scheduler
+    @kcl_scheduler.run
   end
 
-  def kcl_builder(output_queue)
-    KCL::Worker::Builder.new.tap do |builder|
-      builder.java_send(:recordProcessorFactory, [KCL_PROCESSOR_FACTORY_CLASS.java_class], worker_factory(output_queue))
-      builder.config(@kcl_config)
-
-      if metrics_factory
-        builder.metricsFactory(metrics_factory)
-      end
-    end
+  def build_scheduler
+    KCL.coordinator::Scheduler.new(
+      @checkpoint_config,
+      @coordinator_config,
+      @lease_management_config,
+      @lifecycle_config,
+      @metrics_config,
+      @processor_config,
+      @retrieval_config
+    )
   end
 
   def stop
-    @kcl_worker.shutdown if @kcl_worker
+    @kcl_scheduler.shutdown if @kcl_scheduler
   end
 
-  def worker_factory(output_queue)
-    proc { Worker.new(@codec.clone, output_queue, method(:decorate), @checkpoint_interval_seconds, @logger) }
+  def worker_factory
+    proc { Worker.new(@codec.clone, @output_queue, method(:decorate), @checkpoint_interval_seconds, @logger) }
   end
 
   protected
 
-  def metrics_factory
-    case @metrics
-    when nil
-      com.amazonaws.services.kinesis.metrics.impl::NullMetricsFactory.new
-    when 'cloudwatch'
-      nil # default in the underlying library
+  def build_credentials_provider(region)
+    base = if @profile.nil?
+      AWS.auth.credentials::DefaultCredentialsProvider.create
+    else
+      AWS.auth.credentials::ProfileCredentialsProvider.create(@profile)
+    end
+
+    return base if @role_arn.nil?
+
+    # Assume the role as a new layer over the credentials already created, used
+    # by all of Kinesis, DynamoDB and CloudWatch.
+    sts_client = AWS.services.sts::StsClient.builder
+      .region(region)
+      .credentialsProvider(base)
+      .build
+    assume_role_request = AWS.services.sts.model::AssumeRoleRequest.builder
+      .roleArn(@role_arn)
+      .roleSessionName(@role_session_name)
+      .build
+    AWS.services.sts.auth::StsAssumeRoleCredentialsProvider.builder
+      .stsClient(sts_client)
+      .refreshRequest(assume_role_request)
+      .build
+  end
+
+  def build_async_client(client_class, region, proxy_configuration, endpoint = nil)
+    builder = client_class.builder
+      .region(region)
+      .credentialsProvider(@aws_credentials_provider)
+    builder.endpointOverride(java.net::URI.create(endpoint)) unless endpoint.to_s.strip.empty?
+    if proxy_configuration
+      builder.httpClientBuilder(
+        AWS.http.nio.netty::NettyNioAsyncHttpClient.builder.proxyConfiguration(proxy_configuration)
+      )
+    end
+    builder.build
+  end
+
+  def build_proxy_configuration
+    return nil unless @http_proxy && !@http_proxy.value.to_s.strip.empty?
+
+    proxy_uri = URI(@http_proxy.value)
+    @logger.info("Using proxy #{proxy_uri.scheme}://#{proxy_uri.user}:*****@#{proxy_uri.host}:#{proxy_uri.port}")
+    builder = AWS.http.nio.netty::ProxyConfiguration.builder
+      .scheme(proxy_uri.scheme)
+      .host(proxy_uri.host)
+      .port(proxy_uri.port)
+    builder.username(proxy_uri.user) if proxy_uri.user
+    builder.password(proxy_uri.password) if proxy_uri.password
+    unless @non_proxy_hosts.to_s.empty?
+      hosts = java.util::HashSet.new
+      @non_proxy_hosts.split("|").each { |host| hosts.add(host) }
+      builder.nonProxyHosts(hosts)
+    end
+    builder.build
+  end
+
+  def initial_position_in_stream_extended
+    position = if @initial_position_in_stream == "LATEST"
+      KCL.common::InitialPositionInStream::LATEST
+    else
+      KCL.common::InitialPositionInStream::TRIM_HORIZON
+    end
+    KCL.common::InitialPositionInStreamExtended.newInitialPosition(position)
+  end
+
+  def apply_additional_settings
+    # PollingConfig is listed last so its (nested) settings only match keys that
+    # none of the top-level config objects accept, e.g. `max_records`.
+    configs = [
+      @checkpoint_config,
+      @coordinator_config,
+      @lease_management_config,
+      @lifecycle_config,
+      @metrics_config,
+      @processor_config,
+      @retrieval_config,
+      @polling_config,
+    ]
+    @additional_settings.each do |key, value|
+      target = configs.find { |config| config.respond_to?(key) }
+      raise NoMethodError, "Unknown additional_settings option '#{key}'" if target.nil?
+      apply_setting(target, key, value)
     end
   end
 
-  def set_client_proxy_settings(clnt_cfg, proxy_uri)
-    protocol = nil
-    case proxy_uri.scheme
-    when "http"
-      protocol = com.amazonaws.Protocol::HTTP
-    when "https"
-      protocol = com.amazonaws.Protocol::HTTPS
+  # A few KCL 2.x setters (e.g. PollingConfig#retryGetRecordsInSeconds and
+  # #maxGetRecordsThreadPool) take a java.util.Optional, whereas KCL 1.x accepted
+  # the bare value. Try the raw value first, then fall back to wrapping it so the
+  # historical scalar `additional_settings` values keep working.
+  def apply_setting(target, key, value)
+    target.public_send(key, value)
+  rescue NameError, TypeError, ArgumentError
+    # JRuby raises NameError ("no method '...' for arguments (...)") when the setter
+    # exists but no overload accepts the raw value's type, which is the case for the
+    # Optional-typed KCL 2.x setters. Retry with the value wrapped in an Optional.
+    target.public_send(key, java.util::Optional.ofNullable(value))
+  end
+
+  def quiet_kcl_logging
+    level = org.apache.logging.log4j::Level::WARN
+    ["software.amazon.kinesis", "software.amazon.awssdk"].each do |namespace|
+      org.apache.logging.log4j.core.config::Configurator.setLevel(namespace, level)
     end
-    clnt_cfg.set_proxy_protocol(protocol) if protocol
-    clnt_cfg.set_proxy_username(proxy_uri.user)
-    clnt_cfg.set_proxy_password(proxy_uri.password)
-    clnt_cfg.set_proxy_host(proxy_uri.host)
-    clnt_cfg.set_proxy_port(proxy_uri.port)
-    clnt_cfg.set_non_proxy_hosts(@non_proxy_hosts) unless @non_proxy_hosts.to_s.empty?
+  rescue => e
+    @logger.debug("Unable to adjust KCL log level", :exception => e.message)
   end
 end

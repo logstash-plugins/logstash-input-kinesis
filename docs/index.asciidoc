@@ -59,16 +59,16 @@ Codec].
 [id="plugins-{type}s-{plugin}-authentication"]
 ==== Authentication
 
-This plugin uses the default AWS SDK auth chain,
-https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/DefaultAWSCredentialsProviderChain.html[DefaultAWSCredentialsProviderChain],
+This plugin uses the AWS SDK for Java v2 default auth chain,
+https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/auth/credentials/DefaultCredentialsProvider.html[DefaultCredentialsProvider],
 to determine which credentials the client will use, unless `profile` is set, in
 which case
-http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/profile/ProfileCredentialsProvider.html[ProfileCredentialsProvider]
+https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/auth/credentials/ProfileCredentialsProvider.html[ProfileCredentialsProvider]
 is used.
 
 The default chain reads the credentials in this order:
 
- * `AWS_ACCESS_KEY_ID` / `AWS_SECRET_KEY` environment variables
+ * `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` environment variables
  * `~/.aws/credentials` credentials file
  * EC2 instance profile
 
@@ -210,17 +210,21 @@ Session name to use when assuming an IAM role. This is recorded in CloudTrail lo
 * Value type is <<string,string>>
 * There is no default value for this setting 
 
-The KCL provides several configuration options which can be set in
-https://github.com/awslabs/amazon-kinesis-client/blob/master/amazon-kinesis-client-multilang/src/main/java/software/amazon/kinesis/coordinator/KinesisClientLibConfiguration.java[KinesisClientLibConfiguration].
-These options are configured via various function calls that all begin with
-`with`. Some of these functions take complex types, which are not supported.
-However, you may invoke any one of the `withX()` functions that take a primitive
-by providing key-value pairs in `snake_case`. 
+The KCL 2.x configuration is split across several
+https://github.com/awslabs/amazon-kinesis-client[configuration objects]
+(`CheckpointConfig`, `CoordinatorConfig`, `LeaseManagementConfig`,
+`LifecycleConfig`, `MetricsConfig`, `ProcessorConfig`, `RetrievalConfig`, and
+`PollingConfig` — the latter covering settings such as `max_records`,
+`retry_get_records_in_seconds`, and `max_get_records_thread_pool`).
+Each `snake_case` key you provide is matched against the setter methods exposed
+by those objects and applied to whichever one accepts it. Some setters take
+complex types, which are not supported; only setters that take a primitive can
+be configured this way.
 
 Example: 
 
-To set the dynamodb read and write capacity values, use these functions: 
-`withInitialLeaseTableReadCapacity` and `withInitialLeaseTableWriteCapacity`. 
+To set the dynamodb read and write capacity values, use the `LeaseManagementConfig`
+setters `initialLeaseTableReadCapacity` and `initialLeaseTableWriteCapacity`. 
 
 [source,text]
 ----

@@ -292,13 +292,28 @@ RSpec.describe "inputs/kinesis" do
       expect(kcl_scheduler).to receive(:run).with(no_args)
       kinesis.run(queue)
     end
+
+    it "closes the AWS clients once the scheduler stops" do
+      allow(kinesis).to receive(:build_scheduler).and_return(kcl_scheduler)
+      allow(kcl_scheduler).to receive(:run).with(no_args)
+      kinesis_client = double('kinesis_client')
+      dynamo_db_client = double('dynamo_db_client')
+      cloud_watch_client = double('cloud_watch_client')
+      kinesis.instance_variable_set(:@kinesis_client, kinesis_client)
+      kinesis.instance_variable_set(:@dynamo_db_client, dynamo_db_client)
+      kinesis.instance_variable_set(:@cloud_watch_client, cloud_watch_client)
+      expect(kinesis_client).to receive(:close)
+      expect(dynamo_db_client).to receive(:close)
+      expect(cloud_watch_client).to receive(:close)
+      kinesis.run(queue)
+    end
   end
 
   context "#stop" do
-    it "stops the KCL scheduler" do
+    it "gracefully stops the KCL scheduler" do
       expect(kinesis).to receive(:build_scheduler).and_return(kcl_scheduler)
       expect(kcl_scheduler).to receive(:run).with(no_args)
-      expect(kcl_scheduler).to receive(:shutdown).with(no_args)
+      expect(kcl_scheduler).to receive(:startGracefulShutdown).and_return(double('future'))
       kinesis.run(queue)
       kinesis.do_stop # do_stop calls stop internally
     end

@@ -169,6 +169,9 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
     @output_queue = output_queue
     @kcl_scheduler = build_scheduler
     @kcl_scheduler.run
+  ensure
+    # make sure to close the clients when the scheduler is stopped.
+    close_clients
   end
 
   def build_scheduler
@@ -184,7 +187,16 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   end
 
   def stop
-    @kcl_scheduler.shutdown if @kcl_scheduler
+    return unless @kcl_scheduler
+    # Try graceful shutdown first.
+    # An immediate #shutdown drops leases immediately (LEASE_LOST) without that
+    # final checkpoint, which can cause the last in-flight batch to be reprocessed on
+    # the next run.
+    @kcl_scheduler.startGracefulShutdown
+  rescue => e
+    @logger.warn("Failed to start graceful Kinesis shutdown; falling back to immediate shutdown",
+      :exception => e.class.to_s, :message => e.message)
+    @kcl_scheduler.shutdown
   end
 
   def worker_factory
@@ -192,6 +204,16 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   end
 
   protected
+
+  def close_clients
+    [@kinesis_client, @dynamo_db_client, @cloud_watch_client].each do |client|
+      begin
+        client&.close
+      rescue => e
+        @logger.debug("Error while closing AWS client", :exception => e.class.to_s, :message => e.message)
+      end
+    end
+  end
 
   def build_credentials_provider(region, proxy_uri = nil)
     base = if @profile.nil?

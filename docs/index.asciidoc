@@ -68,19 +68,7 @@ additional_settings => {
 ----
 
 Grouping is required because KCL 2.x splits its configuration across multiple
-objects, and some settings (for example `list_shards_backoff_time_in_millis` and
-`max_list_shards_retry_attempts`) exist on more than one object and are read
-independently by KCL. Grouping lets you give each object its own value:
-
-[source,text]
-----
-additional_settings => {
-  "lease_management_config" => { "list_shards_backoff_time_in_millis" => 3000 }
-  "retrieval_config"        => { "list_shards_backoff_time_in_millis" => 7000 }
-}
-----
-
-See <<plugins-{type}s-{plugin}-additional_settings>> for the full list of groups.
+objects. See <<plugins-{type}s-{plugin}-additional_settings>> for the full list of options.
 
 [id="plugins-{type}s-{plugin}-usage"]
 ==== Usage

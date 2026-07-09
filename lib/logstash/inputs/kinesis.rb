@@ -213,6 +213,10 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
     @kcl_scheduler.shutdown
   end
 
+  def close
+    close_clients
+  end
+
   def worker_factory
     proc { Worker.new(@codec.clone, @output_queue, method(:decorate), @checkpoint_interval_seconds, @logger) }
   end

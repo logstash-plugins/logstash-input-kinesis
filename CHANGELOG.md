@@ -1,7 +1,7 @@
 ## 3.0.0
   - Migrated to Kinesis Client Library `2.7.3` (`software.amazon.kinesis`), built on the AWS SDK for Java v2 [#111](https://github.com/logstash-plugins/logstash-input-kinesis/pull/111)
   - Credentials now use the AWS SDK v2 provider chain (`DefaultCredentialsProvider`/`ProfileCredentialsProvider`) and SDK v2 STS for `role_arn`
-  - `additional_settings` keys are now matched against the KCL 2.x configuration objects, including `PollingConfig` (e.g. `max_records`, `retry_get_records_in_seconds`, `max_get_records_thread_pool`)
+  - BREAKING CHANGE: `additional_settings` is now grouped based on the KCL 2.x configuration object it targets (`checkpoint_config`, `coordinator_config`, `lease_management_config`, `lifecycle_config`, `metrics_config`, `processor_config`, `retrieval_config`, `polling_config`), so the same setting can take different values on different objects
   - `kinesis_endpoint` and `dynamodb_endpoint` in `additional_settings` are preserved for backward compatibility and applied as AWS SDK v2 client endpoint overrides
 
 ## 2.3.0

@@ -35,6 +35,53 @@ option, which defaults to "logstash".
 
 The library can optionally also send worker statistics to CloudWatch.
 
+[id="plugins-{type}s-{plugin}-breaking-changes"]
+==== Breaking changes in 3.0.0
+
+Version 3.0.0 migrates the underlying Kinesis Client Library from 1.x to 2.x (AWS
+SDK for Java v2). As part of this, the <<plugins-{type}s-{plugin}-additional_settings>>
+option changed from a flat map of keys to a map **grouped by the KCL configuration
+object** each setting applies to. Flat `additional_settings` used with earlier
+versions must be moved under the appropriate group, otherwise the plugin fails to
+start.
+
+Before (flat):
+
+[source,text]
+----
+additional_settings => {
+  "initial_lease_table_read_capacity" => 25
+  "initial_lease_table_write_capacity" => 100
+}
+----
+
+After (grouped by config object):
+
+[source,text]
+----
+additional_settings => {
+  "lease_management_config" => {
+    "initial_lease_table_read_capacity" => 25
+    "initial_lease_table_write_capacity" => 100
+  }
+}
+----
+
+Grouping is required because KCL 2.x splits its configuration across multiple
+objects, and some settings (for example `list_shards_backoff_time_in_millis` and
+`max_list_shards_retry_attempts`) exist on more than one object and are read
+independently by KCL. Grouping lets you give each object its own value:
+
+[source,text]
+----
+additional_settings => {
+  "lease_management_config" => { "list_shards_backoff_time_in_millis" => 3000 }
+  "retrieval_config"        => { "list_shards_backoff_time_in_millis" => 7000 }
+}
+----
+
+See <<plugins-{type}s-{plugin}-additional_settings>> for the full list of groups.
+
 [id="plugins-{type}s-{plugin}-usage"]
 ==== Usage
 
@@ -211,24 +258,35 @@ Session name to use when assuming an IAM role. This is recorded in CloudTrail lo
 * There is no default value for this setting 
 
 The KCL 2.x configuration is split across several
-https://github.com/awslabs/amazon-kinesis-client[configuration objects]
-(`CheckpointConfig`, `CoordinatorConfig`, `LeaseManagementConfig`,
-`LifecycleConfig`, `MetricsConfig`, `ProcessorConfig`, `RetrievalConfig`, and
-`PollingConfig` — the latter covering settings such as `max_records`,
-`retry_get_records_in_seconds`, and `max_get_records_thread_pool`).
-Each `snake_case` key you provide is matched against the setter methods exposed
-by those objects and applied to whichever one accepts it. Some setters take
-complex types, which are not supported; only setters that take a primitive can
-be configured this way.
+https://github.com/awslabs/amazon-kinesis-client[configuration objects]. Settings
+are provided grouped by the configuration object they apply to, so the same
+setting can take different values on different objects. Each group is a hash of
+`snake_case` setter => value pairs. Some setters take complex types, which are not
+supported; only setters that take a primitive can be configured this way.
+
+The supported groups are: `checkpoint_config`, `coordinator_config`,
+`lease_management_config`, `lifecycle_config`, `metrics_config`,
+`processor_config`, `retrieval_config`, and `polling_config` (the latter covering
+settings such as `max_records`, `retry_get_records_in_seconds`, and
+`max_get_records_thread_pool`).
 
 Example: 
 
-To set the dynamodb read and write capacity values, use the `LeaseManagementConfig`
-setters `initialLeaseTableReadCapacity` and `initialLeaseTableWriteCapacity`. 
+[source,text]
+----
+additional_settings => {
+  "lease_management_config" => { "initial_lease_table_read_capacity" => 25 "initial_lease_table_write_capacity" => 100 }
+  "polling_config" => { "max_records" => 5000 }
+}
+----
+
+For backward compatibility, the top-level keys `kinesis_endpoint` and
+`dynamodb_endpoint` are also accepted and applied as AWS SDK v2 client endpoint
+overrides (useful for testing against LocalStack or a VPC endpoint):
 
 [source,text]
 ----
-additional_settings => {"initial_lease_table_read_capacity" => 25 "initial_lease_table_write_capacity" => 100}
+additional_settings => {"kinesis_endpoint" => "http://localhost:4567"}
 ----
 
 

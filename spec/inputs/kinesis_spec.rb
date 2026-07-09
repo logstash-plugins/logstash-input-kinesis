@@ -59,8 +59,10 @@ RSpec.describe "inputs/kinesis" do
     "region" => "ap-southeast-1",
     "profile" => nil,
     "additional_settings" => {
-        "initial_lease_table_read_capacity" => 25,
-        "initial_lease_table_write_capacity" => 100,
+        "lease_management_config" => {
+            "initial_lease_table_read_capacity" => 25,
+            "initial_lease_table_write_capacity" => 100
+        },
         "kinesis_endpoint" => "http://localhost:4567"
     }
   }}
@@ -78,7 +80,21 @@ RSpec.describe "inputs/kinesis" do
     "non_proxy_hosts" => "127.0.0.5",
   }}
 
-  # Config hash to test invalid additional_settings where the name is not found
+  # Config hash to test an unknown additional_settings group
+  let(:config_with_invalid_additional_settings_unknown_group) {{
+    "application_name" => "my-processor",
+    "kinesis_stream_name" => "run-specs",
+    "codec" => codec,
+    "metrics" => metrics,
+    "checkpoint_interval_seconds" => 120,
+    "region" => "ap-southeast-1",
+    "profile" => nil,
+    "additional_settings" => {
+        "bogus_config" => { "foo" => "bar" }
+    }
+  }}
+
+  # Config hash to test an unknown option within a valid additional_settings group
   let(:config_with_invalid_additional_settings_name_not_found) {{
     "application_name" => "my-processor",
     "kinesis_stream_name" => "run-specs",
@@ -88,7 +104,7 @@ RSpec.describe "inputs/kinesis" do
     "region" => "ap-southeast-1",
     "profile" => nil,
     "additional_settings" => {
-        "foo" => "bar"
+        "lease_management_config" => { "foo" => "bar" }
     }
   }}
 
@@ -102,7 +118,7 @@ RSpec.describe "inputs/kinesis" do
     "region" => "ap-southeast-1",
     "profile" => nil,
     "additional_settings" => {
-        "initial_lease_table_read_capacity" => "not_a_number"
+        "lease_management_config" => { "initial_lease_table_read_capacity" => "not_a_number" }
     }
   }}
 
@@ -174,8 +190,10 @@ RSpec.describe "inputs/kinesis" do
     "region" => "ap-southeast-1",
     "profile" => nil,
     "additional_settings" => {
-        "max_records" => 5000,
-        "retry_get_records_in_seconds" => 5
+        "polling_config" => {
+            "max_records" => 5000,
+            "retry_get_records_in_seconds" => 5
+        }
     }
   }}
   subject!(:kinesis_with_polling_settings) { LogStash::Inputs::Kinesis.new(config_with_polling_settings) }
@@ -204,23 +222,36 @@ RSpec.describe "inputs/kinesis" do
         # client endpoint overrides (KCL 1.x compatibility)
         "kinesis_endpoint" => "http://localhost:4567",
         "dynamodb_endpoint" => "http://localhost:8000",
-        # PollingConfig (bare int + Optional<Integer> setters)
-        "max_records" => 5000,
-        "retry_get_records_in_seconds" => 5,
-        "max_get_records_thread_pool" => 4,
-        # LeaseManagementConfig
-        "initial_lease_table_read_capacity" => 25,
-        "initial_lease_table_write_capacity" => 100,
-        "failover_time_millis" => 15000,
-        # CoordinatorConfig
-        "parent_shard_poll_interval_millis" => 20000,
-        # ProcessorConfig
-        "call_process_records_even_for_empty_record_list" => true,
-        # MetricsConfig
-        "metrics_buffer_time_millis" => 5000,
-        "metrics_max_queue_size" => 1000,
-        # LifecycleConfig
-        "task_backoff_time_millis" => 1000
+        "polling_config" => {
+            # bare int + Optional<Integer> setters
+            "max_records" => 5000,
+            "retry_get_records_in_seconds" => 5,
+            "max_get_records_thread_pool" => 4
+        },
+        "lease_management_config" => {
+            "initial_lease_table_read_capacity" => 25,
+            "initial_lease_table_write_capacity" => 100,
+            "failover_time_millis" => 15000,
+            # shared setter, set independently from retrieval_config below
+            "list_shards_backoff_time_in_millis" => 3000
+        },
+        "coordinator_config" => {
+            "parent_shard_poll_interval_millis" => 20000
+        },
+        "processor_config" => {
+            "call_process_records_even_for_empty_record_list" => true
+        },
+        "metrics_config" => {
+            "metrics_buffer_time_millis" => 5000,
+            "metrics_max_queue_size" => 1000
+        },
+        "lifecycle_config" => {
+            "task_backoff_time_millis" => 1000
+        },
+        "retrieval_config" => {
+            # same setter as lease_management_config, but a different value
+            "list_shards_backoff_time_in_millis" => 7000
+        }
     }
   }}
   subject!(:kinesis_with_all_additional_settings) { LogStash::Inputs::Kinesis.new(config_with_all_additional_settings) }
@@ -250,6 +281,10 @@ RSpec.describe "inputs/kinesis" do
     expect(kinesis_with_all_additional_settings.metrics_config.metricsBufferTimeMillis).to eq(5000)
     expect(kinesis_with_all_additional_settings.metrics_config.metricsMaxQueueSize).to eq(1000)
     expect(kinesis_with_all_additional_settings.lifecycle_config.taskBackoffTimeMillis).to eq(1000)
+
+    # A setter shared by multiple config objects can take a different value on each.
+    expect(kinesis_with_all_additional_settings.lease_management_config.listShardsBackoffTimeInMillis).to eq(3000)
+    expect(kinesis_with_all_additional_settings.retrieval_config.listShardsBackoffTimeInMillis).to eq(7000)
   end
 
   subject!(:kinesis_with_proxy) { LogStash::Inputs::Kinesis.new(config_with_proxy) }
@@ -273,10 +308,18 @@ RSpec.describe "inputs/kinesis" do
     expect(apache_proxy.nonProxyHosts.to_a).to eq(["127.0.0.5"])
   end
 
+  subject!(:kinesis_with_invalid_additional_settings_unknown_group) { LogStash::Inputs::Kinesis.new(config_with_invalid_additional_settings_unknown_group) }
+
+  it "raises NoMethodError for an unknown additional_settings group" do
+    expect{ kinesis_with_invalid_additional_settings_unknown_group.register }
+      .to raise_error(NoMethodError, /Unknown additional_settings group 'bogus_config'/)
+  end
+
   subject!(:kinesis_with_invalid_additional_settings_name_not_found) { LogStash::Inputs::Kinesis.new(config_with_invalid_additional_settings_name_not_found) }
 
-  it "raises NoMethodError for invalid configuration options" do
-    expect{ kinesis_with_invalid_additional_settings_name_not_found.register }.to raise_error(NoMethodError)
+  it "raises NoMethodError for an unknown option within a group" do
+    expect{ kinesis_with_invalid_additional_settings_name_not_found.register }
+      .to raise_error(NoMethodError, /Unknown additional_settings option 'foo' for group 'lease_management_config'/)
   end
 
   subject!(:kinesis_with_invalid_additional_settings_wrong_type) { LogStash::Inputs::Kinesis.new(config_with_invalid_additional_settings_wrong_type) }

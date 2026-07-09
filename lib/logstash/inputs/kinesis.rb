@@ -81,10 +81,24 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   # Select initial_position_in_stream. Accepts TRIM_HORIZON or LATEST
   config :initial_position_in_stream, :validate => ["TRIM_HORIZON", "LATEST"], :default => "TRIM_HORIZON"
 
-  # Any additional arbitrary KCL options. Each key is matched against the setter
-  # methods exposed by the KCL 2.x configuration objects (CheckpointConfig,
-  # CoordinatorConfig, LeaseManagementConfig, LifecycleConfig, MetricsConfig,
-  # ProcessorConfig, RetrievalConfig) and applied to whichever one accepts it.
+  # Advanced KCL tuning, grouped by the KCL 2.x configuration object the settings
+  # apply to. Each group is a hash of `snake_case` setter => value pairs, e.g.:
+  #
+  #   additional_settings => {
+  #     "lease_management_config" => { "failover_time_millis" => 15000 }
+  #     "retrieval_config"        => { "list_shards_backoff_time_in_millis" => 3000 }
+  #     "polling_config"          => { "max_records" => 5000 }
+  #   }
+  #
+  # Grouping by config object lets the same setting take different values on
+  # different objects (e.g. `list_shards_backoff_time_in_millis` exists on both
+  # LeaseManagementConfig and RetrievalConfig). Valid groups: checkpoint_config,
+  # coordinator_config, lease_management_config, lifecycle_config, metrics_config,
+  # processor_config, retrieval_config, polling_config.
+  #
+  # For backward compatibility, the top-level keys `kinesis_endpoint` and
+  # `dynamodb_endpoint` are also accepted and applied as AWS SDK v2 client
+  # endpoint overrides.
   config :additional_settings, :validate => :hash, :default => {}
 
   # Proxy for Kinesis, DynamoDB, and CloudWatch (if enabled)
@@ -314,23 +328,36 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
     KCL.common::InitialPositionInStreamExtended.newInitialPosition(position)
   end
 
+  # The KCL 2.x configuration objects that `additional_settings` groups map to.
+  def additional_settings_targets
+    {
+      "checkpoint_config" => @checkpoint_config,
+      "coordinator_config" => @coordinator_config,
+      "lease_management_config" => @lease_management_config,
+      "lifecycle_config" => @lifecycle_config,
+      "metrics_config" => @metrics_config,
+      "processor_config" => @processor_config,
+      "retrieval_config" => @retrieval_config,
+      "polling_config" => @polling_config,
+    }
+  end
+
   def apply_additional_settings
-    # PollingConfig is listed last so its (nested) settings only match keys that
-    # none of the top-level config objects accept, e.g. `max_records`.
-    configs = [
-      @checkpoint_config,
-      @coordinator_config,
-      @lease_management_config,
-      @lifecycle_config,
-      @metrics_config,
-      @processor_config,
-      @retrieval_config,
-      @polling_config,
-    ]
-    @additional_settings.each do |key, value|
-      target = configs.find { |config| config.respond_to?(key) }
-      raise NoMethodError, "Unknown additional_settings option '#{key}'" if target.nil?
-      apply_setting(target, key, value)
+    targets = additional_settings_targets
+    @additional_settings.each do |group, settings|
+      config = targets[group]
+      if config.nil?
+        raise NoMethodError, "Unknown additional_settings group '#{group}'; expected one of: #{targets.keys.join(', ')}"
+      end
+      unless settings.is_a?(Hash)
+        raise ArgumentError, "additional_settings group '#{group}' must be a hash of setting => value pairs"
+      end
+      settings.each do |key, value|
+        unless config.respond_to?(key)
+          raise NoMethodError, "Unknown additional_settings option '#{key}' for group '#{group}'"
+        end
+        apply_setting(config, key, value)
+      end
     end
   end
 

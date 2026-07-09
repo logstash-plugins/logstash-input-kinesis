@@ -227,6 +227,7 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
     [@kinesis_client, @dynamo_db_client, @cloud_watch_client].each do |client|
       begin
         client&.close
+        @sts_client&.close
       rescue => e
         @logger.debug("Error while closing AWS client", :exception => e.class.to_s, :message => e.message)
       end
@@ -354,7 +355,7 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
         raise NoMethodError, "Unknown additional_settings group '#{group}'; expected one of: #{targets.keys.join(', ')}"
       end
       unless settings.is_a?(Hash)
-        raise ArgumentError, "additional_settings group '#{group}' must be a hash of setting => value pairs"
+        raise ArgumentError, "additional_settings group '#{group}' must be a hash of key => value pairs"
       end
       settings.each do |key, value|
         unless config.respond_to?(key)

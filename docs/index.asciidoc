@@ -257,25 +257,32 @@ Session name to use when assuming an IAM role. This is recorded in CloudTrail lo
 * Value type is <<string,string>>
 * There is no default value for this setting 
 
-The KCL 2.x configuration is split across several
-https://github.com/awslabs/amazon-kinesis-client[configuration objects]. Settings
-are provided grouped by the configuration object they apply to, so the same
-setting can take different values on different objects. Each group is a hash of
-`snake_case` setter => value pairs. Some setters take complex types, which are not
-supported; only setters that take a primitive can be configured this way.
+Settings are grouped by the KCL 2.x https://github.com/awslabs/amazon-kinesis-client[configuration objects] they apply to. Each
+group is a hash of setter name => value pairs. Use the `snake_case` form of the
+Java setter name (for example, `initialLeaseTableReadCapacity` becomes
+`initial_lease_table_read_capacity`). Only setters that accept a primitive value
+are supported.
 
-The supported groups are: `checkpoint_config`, `coordinator_config`,
-`lease_management_config`, `lifecycle_config`, `metrics_config`,
-`processor_config`, `retrieval_config`, and `polling_config` (the latter covering
-settings such as `max_records`, `retry_get_records_in_seconds`, and
-`max_get_records_thread_pool`).
+The supported groups are:
+
+* `checkpoint_config` -- https://github.com/awslabs/amazon-kinesis-client/blob/v2.7.3/amazon-kinesis-client/src/main/java/software/amazon/kinesis/checkpoint/CheckpointConfig.java[CheckpointConfig]
+* `coordinator_config` -- https://github.com/awslabs/amazon-kinesis-client/blob/v2.7.3/amazon-kinesis-client/src/main/java/software/amazon/kinesis/coordinator/CoordinatorConfig.java[CoordinatorConfig]
+* `lease_management_config` -- https://github.com/awslabs/amazon-kinesis-client/blob/v2.7.3/amazon-kinesis-client/src/main/java/software/amazon/kinesis/leases/LeaseManagementConfig.java[LeaseManagementConfig]
+* `lifecycle_config` -- https://github.com/awslabs/amazon-kinesis-client/blob/v2.7.3/amazon-kinesis-client/src/main/java/software/amazon/kinesis/lifecycle/LifecycleConfig.java[LifecycleConfig]
+* `metrics_config` -- https://github.com/awslabs/amazon-kinesis-client/blob/v2.7.3/amazon-kinesis-client/src/main/java/software/amazon/kinesis/metrics/MetricsConfig.java[MetricsConfig]
+* `processor_config` -- https://github.com/awslabs/amazon-kinesis-client/blob/v2.7.3/amazon-kinesis-client/src/main/java/software/amazon/kinesis/processor/ProcessorConfig.java[ProcessorConfig]
+* `retrieval_config` -- https://github.com/awslabs/amazon-kinesis-client/blob/v2.7.3/amazon-kinesis-client/src/main/java/software/amazon/kinesis/retrieval/RetrievalConfig.java[RetrievalConfig]
+* `polling_config` -- https://github.com/awslabs/amazon-kinesis-client/blob/v2.7.3/amazon-kinesis-client/src/main/java/software/amazon/kinesis/retrieval/polling/PollingConfig.java[PollingConfig]
 
 Example: 
 
 [source,text]
 ----
 additional_settings => {
-  "lease_management_config" => { "initial_lease_table_read_capacity" => 25 "initial_lease_table_write_capacity" => 100 }
+  "lease_management_config" => { 
+    "initial_lease_table_read_capacity" => 25 
+    "initial_lease_table_write_capacity" => 100 
+  }
   "polling_config" => { "max_records" => 5000 }
 }
 ----

@@ -224,12 +224,12 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
   protected
 
   def close_clients
-    [@kinesis_client, @dynamo_db_client, @cloud_watch_client].each do |client|
+    closeables = [@kinesis_client, @dynamo_db_client, @cloud_watch_client, @sts_client, @aws_credentials_provider]
+    closeables.each do |closeable|
       begin
-        client&.close
-        @sts_client&.close
+        closeable&.close
       rescue => e
-        @logger.debug("Error while closing AWS client", :exception => e.class.to_s, :message => e.message)
+        @logger.debug("Error while closing AWS resource", :exception => e.class.to_s, :message => e.message)
       end
     end
   end
@@ -256,13 +256,13 @@ class LogStash::Inputs::Kinesis < LogStash::Inputs::Base
         AWS.http.apache::ApacheHttpClient.builder.proxyConfiguration(apache_proxy)
       )
     end
-    sts_client = sts_builder.build
+    @sts_client = sts_builder.build
     assume_role_request = AWS.services.sts.model::AssumeRoleRequest.builder
       .roleArn(@role_arn)
       .roleSessionName(@role_session_name)
       .build
     AWS.services.sts.auth::StsAssumeRoleCredentialsProvider.builder
-      .stsClient(sts_client)
+      .stsClient(@sts_client)
       .refreshRequest(assume_role_request)
       .build
   end

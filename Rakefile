@@ -30,9 +30,20 @@ end
 
 desc 'Install the JAR dependencies to vendor/'
 task :install_jars do
-  # We actually want jar-dependencies will download the jars and place it in
-  # vendor/jar-dependencies/runtime-jars
-  Jars::Installer.new.vendor_jars!(false, 'vendor/jar-dependencies/runtime-jars')
+  # We want jar-dependencies to download the jars and place them in
+  # vendor/jar-dependencies/runtime-jars.
+  vendor_dir = 'vendor/jar-dependencies/runtime-jars'
+  installer = Jars::Installer.new
+
+  # The `vendor_jars!` signature differs across jar-dependencies versions: 0.4.x (Logstash-pinned) takes
+  # `vendor_jars!(write_require_file = true, vendor_dir = nil)` while 0.5.x takes
+  # `vendor_jars!(vendor_dir = nil, write_require_file: true)`. Detect which one
+  # is present so `rake vendor` works under both (e.g. newer local JRubies).
+  if installer.method(:vendor_jars!).parameters.include?([:key, :write_require_file])
+    installer.vendor_jars!(vendor_dir, write_require_file: false)
+  else
+    installer.vendor_jars!(false, vendor_dir)
+  end
 end
 
 task build: :install_jars

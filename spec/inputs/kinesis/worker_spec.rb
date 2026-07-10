@@ -6,81 +6,76 @@ require "logstash/codecs/json"
 require "json"
 
 RSpec.describe "LogStash::Inputs::Kinesis::Worker" do
-  KCL_TYPES = com.amazonaws.services.kinesis.clientlibrary.types
+  EVENTS = Java::software.amazon.kinesis.lifecycle.events
+  RETRIEVAL = Java::software.amazon.kinesis.retrieval
 
-  subject!(:worker) { LogStash::Inputs::Kinesis::Worker.new(codec, queue, decorator, checkpoint_interval) }
+  subject!(:worker) { LogStash::Inputs::Kinesis::Worker.new(codec, queue, decorator, checkpoint_interval, logger) }
   let(:codec) { LogStash::Codecs::JSON.new() }
   let(:queue) { Queue.new }
   let(:decorator) { proc { |x| x.set('decorated', true); x } }
   let(:checkpoint_interval) { 120 }
+  let(:logger) { double('logger').as_null_object }
   let(:checkpointer) { double('checkpointer', checkpoint: nil) }
-  let(:init_input) { KCL_TYPES::InitializationInput.new().withShardId("xyz") }
+  let(:init_input) { EVENTS::InitializationInput.builder.shardId("xyz").build }
 
   it "honors the initialize java interface method contract" do
     expect { worker.initialize(init_input) }.to_not raise_error
   end
 
-  def record(hash = { "message" => "test" }, arrival_timestamp, partition_key, sequence_number)
-    encoder = java.nio.charset::Charset.forName("UTF-8").newEncoder()
-    data = encoder.encode(java.nio.CharBuffer.wrap(JSON.generate(hash)))
-    double(
-      getData: data,
-      getApproximateArrivalTimestamp: java.util.Date.new(arrival_timestamp.to_f * 1000),
-      getPartitionKey: partition_key,
-      getSequenceNumber: sequence_number
-    )
+  def record(hash, arrival_timestamp, partition_key, sequence_number)
+    data = java.nio.ByteBuffer.wrap(JSON.generate(hash).to_java_bytes).asReadOnlyBuffer
+    RETRIEVAL::KinesisClientRecord.builder
+        .data(data)
+        .approximateArrivalTimestamp(java.time.Instant.ofEpochMilli((arrival_timestamp.to_f * 1000).to_i))
+        .partitionKey(partition_key)
+        .sequenceNumber(sequence_number)
+        .build
+  end
+
+  def process_records_input(records, checkpointer)
+    EVENTS::ProcessRecordsInput.builder
+        .records(java.util.Arrays.asList(records.to_java(RETRIEVAL::KinesisClientRecord)))
+        .checkpointer(checkpointer)
+        .build
   end
 
   let(:process_input) {
-    KCL_TYPES::ProcessRecordsInput.new()
-        .withRecords(java.util.Arrays.asList([
-          record(
-            {
-              id: "record1",
-              message: "test1"
-            },
-            '1.441215410867E9',
-            'partitionKey1',
-            '21269319989652663814458848515492872191'
-          ),
-          record(
-            {
-              '@metadata' => {
-                forwarded: 'record2'
-              },
-              id: "record2",
-              message: "test2"
-            },
-            '1.441215410868E9',
-            'partitionKey2',
-            '21269319989652663814458848515492872192'
-          )].to_java)
-        )
-        .withCheckpointer(checkpointer)
+    process_records_input([
+      record(
+        { id: "record1", message: "test1" },
+        '1.441215410867E9',
+        'partitionKey1',
+        '21269319989652663814458848515492872191'
+      ),
+      record(
+        {
+          '@metadata' => { forwarded: 'record2' },
+          id: "record2",
+          message: "test2"
+        },
+        '1.441215410868E9',
+        'partitionKey2',
+        '21269319989652663814458848515492872192'
+      )], checkpointer)
   }
   let(:collide_metadata_process_input) {
-    KCL_TYPES::ProcessRecordsInput.new()
-        .withRecords(java.util.Arrays.asList([
-          record(
-            {
-              '@metadata' => {
-                forwarded: 'record3',
-                partition_key: 'invalid_key'
-              },
-            id: "record3",
-            message: "test3"
-            },
-            '1.441215410869E9',
-            'partitionKey3',
-            '21269319989652663814458848515492872193'
-          )].to_java)
-        )
-        .withCheckpointer(checkpointer)
+    process_records_input([
+      record(
+        {
+          '@metadata' => {
+            forwarded: 'record3',
+            partition_key: 'invalid_key'
+          },
+          id: "record3",
+          message: "test3"
+        },
+        '1.441215410869E9',
+        'partitionKey3',
+        '21269319989652663814458848515492872193'
+      )], checkpointer)
   }
   let(:empty_process_input) {
-    KCL_TYPES::ProcessRecordsInput.new()
-        .withRecords(java.util.Arrays.asList([].to_java))
-        .withCheckpointer(checkpointer)
+    process_records_input([], checkpointer)
   }
 
   context "initialized" do
@@ -137,15 +132,19 @@ RSpec.describe "LogStash::Inputs::Kinesis::Worker" do
       end
     end
 
-    describe "#shutdown" do
-      it "checkpoints on termination" do
-        input = KCL_TYPES::ShutdownInput.new
-        checkpointer = double('checkpointer')
+    describe "#shardEnded" do
+      it "checkpoints when the shard ends" do
         expect(checkpointer).to receive(:checkpoint)
-        input.
-          with_shutdown_reason(com.amazonaws.services.kinesis.clientlibrary.lib.worker::ShutdownReason::TERMINATE).
-          with_checkpointer(checkpointer)
-        worker.shutdown(input)
+        input = EVENTS::ShardEndedInput.builder.checkpointer(checkpointer).build
+        worker.shardEnded(input)
+      end
+    end
+
+    describe "#shutdownRequested" do
+      it "checkpoints on shutdown" do
+        expect(checkpointer).to receive(:checkpoint)
+        input = EVENTS::ShutdownRequestedInput.builder.checkpointer(checkpointer).build
+        worker.shutdownRequested(input)
       end
     end
   end

@@ -1,6 +1,6 @@
 # Logstash AWS Kinesis Input Plugin
 
-[![Build Status](https://travis-ci.com/logstash-plugins/logstash-input-kinesis.svg)](https://travis-ci.com/logstash-plugins/logstash-input-kinesis)
+[![Unit Tests](https://github.com/logstash-plugins/logstash-input-kinesis/actions/workflows/unit-tests.yml/badge.svg?branch=main)](https://github.com/logstash-plugins/logstash-input-kinesis/actions/workflows/unit-tests.yml)
 
 This is a [AWS Kinesis](http://docs.aws.amazon.com/kinesis/latest/dev/introduction.html) input plugin for [Logstash](https://github.com/elasticsearch/logstash). Under the hood uses the [Kinesis Client Library](http://docs.aws.amazon.com/kinesis/latest/dev/kinesis-record-processor-implementation-app-java.html).
 
